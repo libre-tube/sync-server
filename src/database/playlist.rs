@@ -31,11 +31,7 @@ pub async fn update_existing_playlist(
     playlist_: &Playlist,
 ) -> Result<Playlist, DbError> {
     let updated_playlist = diesel::update(playlist.filter(id.eq(playlist_.id.to_string())))
-        .set((
-            title.eq(playlist_.title.clone()),
-            description.eq(playlist_.description.clone()),
-            thumbnail_url.eq(playlist_.thumbnail_url.clone()),
-        ))
+        .set(playlist_)
         .returning(Playlist::as_returning())
         .get_result(conn)
         .await?;

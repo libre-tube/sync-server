@@ -6,10 +6,11 @@ pub async fn create_or_update_video(
     conn: &mut DbConnection,
     video_: &Video,
 ) -> Result<(), DbError> {
-    // TODO: update existing entries if the video already exists
     diesel::insert_into(video)
         .values(video_)
-        .on_conflict_do_nothing()
+        .on_conflict(id)
+        .do_update()
+        .set(video_)
         .execute(conn)
         .await?;
 

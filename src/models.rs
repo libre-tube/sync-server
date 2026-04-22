@@ -3,7 +3,9 @@ use utoipa::ToSchema;
 
 use super::schema::*;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Insertable, ToSchema)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Insertable, AsChangeset, ToSchema,
+)]
 #[diesel(table_name = user)]
 pub struct User {
     pub id: String,
@@ -11,7 +13,9 @@ pub struct User {
     pub password_hash: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Insertable, ToSchema)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Insertable, AsChangeset, ToSchema,
+)]
 #[diesel(table_name = channel)]
 pub struct Channel {
     pub id: String,
@@ -30,7 +34,9 @@ pub struct Subscription {
     pub channel_id: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Insertable, ToSchema)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Insertable, AsChangeset, ToSchema,
+)]
 #[diesel(belongs_to(User))]
 #[diesel(table_name = playlist)]
 pub struct Playlist {
@@ -41,7 +47,9 @@ pub struct Playlist {
     pub thumbnail_url: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Insertable, ToSchema)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Insertable, AsChangeset, ToSchema,
+)]
 #[diesel(belongs_to(Channel, foreign_key = uploader_id))]
 #[diesel(table_name = video)]
 pub struct Video {
