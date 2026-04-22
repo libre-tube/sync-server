@@ -55,10 +55,14 @@ async fn get_playlist(
     let (playlist, videos) = get_playlist_by_id_with_videos(&mut conn, &playlist_id)
         .await
         .map_err(error::ErrorInternalServerError)?;
-
     if playlist.user_id != user_id {
         return Err(error::ErrorForbidden("not the owner of the playlist"));
     }
+
+    let videos = videos
+        .iter()
+        .map(|(video, channel)| CreateVideo::from((video, channel)))
+        .collect();
 
     let playlist_response = PlaylistResponse { playlist, videos };
     Ok(HttpResponse::Ok().json(playlist_response))

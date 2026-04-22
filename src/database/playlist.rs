@@ -5,8 +5,8 @@ use uuid::Uuid;
 use crate::{
     DbConnection,
     database::{DbError, video::create_or_update_video},
-    models::{Playlist, PlaylistVideoMember, Video},
-    schema::{playlist::dsl::*, playlist_video_member::dsl::*, video},
+    models::{Channel, Playlist, PlaylistVideoMember, Video},
+    schema::{channel, playlist::dsl::*, playlist_video_member::dsl::*, video},
 };
 
 pub async fn create_new_playlist(
@@ -112,13 +112,13 @@ pub async fn get_playlist_by_id(
 pub async fn get_playlist_by_id_with_videos(
     conn: &mut DbConnection,
     playlist_id_: &str,
-) -> Result<(Playlist, Vec<Video>), DbError> {
+) -> Result<(Playlist, Vec<(Video, Channel)>), DbError> {
     let playlist_ = get_playlist_by_id(conn, playlist_id_).await?;
 
     let videos = playlist_video_member
         .filter(playlist_id.eq(playlist_id_.to_string()))
-        .inner_join(video::table)
-        .select(Video::as_select())
+        .inner_join(video::table.inner_join(channel::table))
+        .select((Video::as_select(), Channel::as_select()))
         .load(conn)
         .await?;
 

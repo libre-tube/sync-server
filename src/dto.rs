@@ -40,7 +40,7 @@ pub struct CreatePlaylist {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct PlaylistResponse {
     pub playlist: Playlist,
-    pub videos: Vec<Video>,
+    pub videos: Vec<CreateVideo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -51,6 +51,18 @@ pub struct CreateVideo {
     pub uploader: Channel,
     pub thumbnail_url: String,
     pub duration: i32,
+}
+impl From<(&Video, &Channel)> for CreateVideo {
+    fn from((video, channel): (&Video, &Channel)) -> Self {
+        CreateVideo {
+            id: video.id.clone(),
+            title: video.title.clone(),
+            upload_date: video.upload_date,
+            thumbnail_url: video.thumbnail_url.clone(),
+            duration: video.duration,
+            uploader: channel.clone(),
+        }
+    }
 }
 
 /// Claims to store inside the JWT Token
