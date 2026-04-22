@@ -5,7 +5,7 @@ ARG DATABASE_BACKEND=sqlite
 COPY . .
 
 RUN apk add sqlite-static sqlite-dev musl-dev
-RUN cargo build --release --features "${DATABASE_BACKEND}"
+RUN cargo build --release --no-default-features --features "${DATABASE_BACKEND}"
 
 FROM alpine:latest AS runner
 WORKDIR /app
