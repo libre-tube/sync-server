@@ -1,2 +1,1 @@
-- Playlists support
 - Configuration (secret key, database backend selection)

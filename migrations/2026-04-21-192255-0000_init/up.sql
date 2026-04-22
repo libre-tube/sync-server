@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS playlist
     user_id VARCHAR NOT NULL REFERENCES user(id),
     title VARCHAR NOT NULL,
     description VARCHAR NOT NULL,
-    thumbnail_url VARCHAR NOT NULL
+    thumbnail_url VARCHAR
 );
 
 CREATE TABLE IF NOT EXISTS video

@@ -13,7 +13,10 @@ use dotenvor::dotenv;
 use utoipa_actix_web::AppExt;
 use utoipa_scalar::{Scalar, Servable};
 
-use crate::handlers::{ScopedHandler, subscriptions::SubscriptionsHandler, user::UserHandler};
+use crate::handlers::{
+    ScopedHandler, playlists::PlaylistsHandler, subscriptions::SubscriptionsHandler,
+    user::UserHandler,
+};
 
 mod database;
 mod dto;
@@ -43,6 +46,7 @@ async fn main() -> io::Result<()> {
             .app_data(web::Data::new(pool.clone()))
             .service(UserHandler::get_service())
             .service(SubscriptionsHandler::get_service())
+            .service(PlaylistsHandler::get_service())
             .split_for_parts();
 
         app.service(Scalar::with_url("/docs", api))

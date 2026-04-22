@@ -15,7 +15,7 @@ diesel::table! {
         user_id -> Text,
         title -> Text,
         description -> Text,
-        thumbnail_url -> Text,
+        thumbnail_url -> Nullable<Text>,
     }
 }
 

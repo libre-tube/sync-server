@@ -38,7 +38,7 @@ pub struct Playlist {
     pub user_id: String,
     pub title: String,
     pub description: String,
-    pub thumbnail_url: String,
+    pub thumbnail_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Insertable, ToSchema)]
