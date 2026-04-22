@@ -16,9 +16,12 @@ services:
     restart: unless-stopped
 
   db:
-    image: postgres
+    image: postgres:18
+    container_name: libretube-sync-postgres
     environment:
       - "POSTGRES_USER=postgres"
       - "POSTGRES_PASSWORD=password"
       - "POSTGRES_DB=libretube-sync"
+    volumes:
+      - ./data:/var/lib/postgresql
     restart: unless-stopped
