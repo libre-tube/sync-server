@@ -6,6 +6,7 @@ use std::{env, io};
 use actix_web::{App, HttpServer, middleware, web};
 use diesel_async::pooled_connection::{AsyncDieselConnectionManager, bb8::Pool};
 use dotenvor::dotenv;
+use utoipa::openapi::LicenseBuilder;
 use utoipa_actix_web::AppExt;
 use utoipa_scalar::{Scalar, Servable};
 
@@ -46,7 +47,7 @@ async fn main() -> io::Result<()> {
     log::info!("starting HTTP server at http://localhost:8080");
 
     HttpServer::new(move || {
-        let (app, api) = App::new()
+        let (app, mut api) = App::new()
             .into_utoipa_app()
             // add DB pool handle to app data; enables use of `web::Data<DbPool>` extractor
             .app_data(web::Data::new(pool.clone()))
@@ -55,10 +56,22 @@ async fn main() -> io::Result<()> {
             .service(PlaylistsHandler::get_service())
             .split_for_parts();
 
+        // update displayed metadata in OpenAPI docs
+        api.info.title = String::from(env!("CARGO_PKG_NAME"));
+        api.info.version = String::from(env!("CARGO_PKG_VERSION"));
+        api.info.description = Some(String::from(env!("CARGO_PKG_DESCRIPTION")));
+        api.info.license = Some(
+            LicenseBuilder::new()
+                .identifier(Some(env!("CARGO_PKG_LICENSE")))
+                .name(env!("CARGO_PKG_LICENSE"))
+                .build(),
+        );
+        api.info.contact = None;
+
         app.service(Scalar::with_url("/docs", api))
             .wrap(middleware::Logger::default())
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(("0.0.0.0", 8080))?
     .run()
     .await
 }

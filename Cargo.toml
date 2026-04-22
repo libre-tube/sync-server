@@ -2,6 +2,8 @@
 name = "libretube-sync"
 version = "0.1.0"
 edition = "2024"
+description = "Server to sync user data (subscriptions, playlists, ...) between devices, written for LibreTube"
+license = "AGPL-3.0-or-later"
 
 [dependencies]
 # Web server
