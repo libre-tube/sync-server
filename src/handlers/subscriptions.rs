@@ -1,6 +1,4 @@
-use actix_web::{
-    HttpMessage, HttpRequest, HttpResponse, Responder, error, get, middleware::from_fn, post, web,
-};
+use actix_web::{HttpRequest, HttpResponse, Responder, error, get, middleware::from_fn, post, web};
 use utoipa_actix_web::scope;
 
 use crate::{
@@ -9,8 +7,9 @@ use crate::{
         add_subscription_by_user_id, get_subscriptions_by_user_id, remove_subscription_by_user_id,
     },
     dto::UnsubscribeChannel,
-    handlers::{ScopedHandler, user::auth_middleware},
-    models::{Channel, User},
+    get_db_conn,
+    handlers::{ScopedHandler, get_user, user::auth_middleware},
+    models::Channel,
 };
 
 pub struct SubscriptionsHandler {}
@@ -35,13 +34,8 @@ impl ScopedHandler for SubscriptionsHandler {
 #[utoipa::path(responses((status = OK, body = Vec<Channel>)))]
 #[get("/")]
 async fn get_subscriptions(req: HttpRequest, pool: WebData) -> actix_web::Result<impl Responder> {
-    let extensions = req.extensions();
-    let user = extensions.get::<User>().unwrap();
-
-    let mut conn = pool
-        .get()
-        .await
-        .expect("Couldn't get db connection from the pool");
+    let user = get_user(&req);
+    let mut conn = get_db_conn!(pool);
 
     let subscriptions = get_subscriptions_by_user_id(&mut conn, &user.id)
         .await
@@ -57,13 +51,8 @@ async fn subscribe(
     pool: WebData,
     channel: web::Json<Channel>,
 ) -> actix_web::Result<impl Responder> {
-    let extensions = req.extensions();
-    let user = extensions.get::<User>().unwrap();
-
-    let mut conn = pool
-        .get()
-        .await
-        .expect("Couldn't get db connection from the pool");
+    let user = get_user(&req);
+    let mut conn = get_db_conn!(pool);
 
     match add_subscription_by_user_id(&mut conn, &channel, &user.id).await {
         Ok(_) => Ok(HttpResponse::Ok()),
@@ -78,13 +67,8 @@ async fn unsubscribe(
     pool: WebData,
     channel: web::Json<UnsubscribeChannel>,
 ) -> actix_web::Result<impl Responder> {
-    let extensions = req.extensions();
-    let user = extensions.get::<User>().unwrap();
-
-    let mut conn = pool
-        .get()
-        .await
-        .expect("Couldn't get db connection from the pool");
+    let user = get_user(&req);
+    let mut conn = get_db_conn!(pool);
 
     match remove_subscription_by_user_id(&mut conn, &channel.channel_id, &user.id).await {
         Ok(_) => Ok(HttpResponse::Ok()),

@@ -10,10 +10,9 @@ use crate::database::user::{
     delete_existing_user, find_user_by_id, find_user_by_name_hash, insert_new_user,
 };
 use crate::dto::LoginResponse;
-use crate::handlers::ScopedHandler;
-use crate::models::User;
+use crate::handlers::{ScopedHandler, get_user};
 use crate::util::{generate_jwt, hash_password, hash_username, verify_jwt, verify_password};
-use crate::{WebData, dto, models};
+use crate::{WebData, dto, get_db_conn, models};
 
 const AUTH_HEADER_KEY: &str = "Authorization";
 
@@ -46,10 +45,7 @@ async fn register_user(
     pool: WebData,
     form: web::Json<dto::RegisterUser>,
 ) -> actix_web::Result<impl Responder> {
-    let mut conn = pool
-        .get()
-        .await
-        .expect("Couldn't get db connection from the pool");
+    let mut conn = get_db_conn!(pool);
 
     let user = models::User {
         id: Uuid::now_v7().to_string(),
@@ -81,10 +77,7 @@ async fn login_user(
     pool: WebData,
     form: web::Json<dto::LoginUser>,
 ) -> actix_web::Result<impl Responder> {
-    let mut conn = pool
-        .get()
-        .await
-        .expect("Couldn't get db connection from the pool");
+    let mut conn = get_db_conn!(pool);
 
     let name = hash_username(&form.name);
     let Some(user) = find_user_by_name_hash(&mut conn, &name)
@@ -115,25 +108,14 @@ async fn delete_user(
     pool: WebData,
     form: web::Json<dto::DeleteUser>,
 ) -> actix_web::Result<impl Responder> {
-    let mut conn = pool
-        .get()
-        .await
-        .expect("Couldn't get db connection from the pool");
+    let mut conn = get_db_conn!(pool);
+    let user = get_user(&req);
 
-    // make sure the refcell doesn't escape await, see https://rust-lang.github.io/rust-clippy/rust-1.95.0/index.html#await_holding_refcell_ref
-    let user_id;
-    {
-        let extensions = req.extensions();
-        let user = extensions.get::<User>().unwrap();
-
-        if !verify_password(&form.password, &user.password_hash) {
-            return Err(error::ErrorForbidden("invalid username or password"));
-        }
-
-        user_id = user.id.clone();
+    if !verify_password(&form.password, &user.password_hash) {
+        return Err(error::ErrorForbidden("invalid username or password"));
     }
 
-    match delete_existing_user(&mut conn, &user_id).await {
+    match delete_existing_user(&mut conn, &user.id).await {
         Ok(_) => Ok(HttpResponse::Ok()),
         Err(err) => Err(error::ErrorInternalServerError(err)),
     }
@@ -159,12 +141,9 @@ pub async fn auth_middleware(
     let Ok(user_id) = verify_jwt(&jwt) else {
         return Err(error::ErrorUnauthorized("invalid authentication token"));
     };
-    let pool: WebData = req.app_data().cloned().unwrap();
 
-    let mut conn = pool
-        .get()
-        .await
-        .expect("Couldn't get db connection from the pool");
+    let pool: WebData = req.app_data().cloned().unwrap();
+    let mut conn = get_db_conn!(pool);
 
     let Some(user) = find_user_by_id(&mut conn, &user_id).await.ok().flatten() else {
         return Err(error::ErrorBadRequest("user does not exist"));
@@ -174,7 +153,5 @@ pub async fn auth_middleware(
     // `req.extensions().get::<User>()` by handlers
     req.extensions_mut().insert(user);
 
-    // pre-processing
     next.call(req).await
-    // post-processing
 }
