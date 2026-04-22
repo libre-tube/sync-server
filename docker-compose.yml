@@ -1,0 +1,14 @@
+services:
+  sync:
+    container_name: libretube-sync
+    image: ghcr.io/libretube/libretube-sync:latest
+    build:
+      context: .
+      args:
+        - "DATABASE_BACKEND=sqlite" # alternatively: postgres
+    environment:
+      - "DATABASE_URL=./db.sqlite"
+      - "SECRET_KEY=changeme"
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
