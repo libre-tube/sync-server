@@ -7,6 +7,11 @@ edition = "2024"
 # Web server
 actix-web = "4.13"
 
+# OpenAPI Docs
+utoipa = { version = "5.4", features = ["actix_extras"] }
+utoipa-actix-web = "0.1"
+utoipa-scalar = { version = "0.3", features = ["actix-web"] }
+
 # Database
 diesel = { version = "2.3", features = [
   "returning_clauses_for_sqlite_3_35",

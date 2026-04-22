@@ -1,8 +1,9 @@
 use actix_web::body::MessageBody;
-use actix_web::dev::{ServiceRequest, ServiceResponse};
+use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
 use actix_web::middleware::Next;
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, delete, error, post, web};
 use diesel::result::DatabaseErrorKind;
+use utoipa_actix_web::scope;
 use uuid::Uuid;
 
 use crate::database::user::{
@@ -18,19 +19,28 @@ const AUTH_HEADER_KEY: &str = "Authorization";
 
 pub struct UserHandler {}
 impl ScopedHandler for UserHandler {
-    fn get_service() -> actix_web::Scope {
-        web::scope("/user")
+    fn get_service() -> scope::Scope<
+        impl ServiceFactory<
+            ServiceRequest,
+            Response = ServiceResponse<impl MessageBody>,
+            Config = (),
+            InitError = (),
+            Error = actix_web::Error,
+        >,
+    > {
+        scope::scope("/user")
             .service(register_user)
             .service(login_user)
             // services that require auth start here
             .service(
-                web::scope("")
+                scope::scope("")
                     .wrap(actix_web::middleware::from_fn(auth_middleware))
                     .service(delete_user),
             )
     }
 }
 
+#[utoipa::path(responses((status = OK, body = LoginResponse)))]
 #[post("/register")]
 async fn register_user(
     pool: WebData,
@@ -65,6 +75,7 @@ async fn register_user(
     }
 }
 
+#[utoipa::path(responses((status = CREATED, body = LoginResponse)))]
 #[post("/login")]
 async fn login_user(
     pool: WebData,
@@ -97,6 +108,7 @@ async fn login_user(
     }
 }
 
+#[utoipa::path(responses((status = OK)))]
 #[delete("/delete")]
 async fn delete_user(
     req: HttpRequest,

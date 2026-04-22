@@ -10,6 +10,8 @@ use diesel_async::{
     sync_connection_wrapper::SyncConnectionWrapper,
 };
 use dotenvor::dotenv;
+use utoipa_actix_web::AppExt;
+use utoipa_scalar::{Scalar, Servable};
 
 use crate::handlers::{ScopedHandler, user::UserHandler};
 
@@ -35,10 +37,14 @@ async fn main() -> io::Result<()> {
     log::info!("starting HTTP server at http://localhost:8080");
 
     HttpServer::new(move || {
-        App::new()
+        let (app, api) = App::new()
+            .into_utoipa_app()
             // add DB pool handle to app data; enables use of `web::Data<DbPool>` extractor
             .app_data(web::Data::new(pool.clone()))
             .service(UserHandler::get_service())
+            .split_for_parts();
+
+        app.service(Scalar::with_url("/docs", api))
             .wrap(middleware::Logger::default())
     })
     .bind(("127.0.0.1", 8080))?
