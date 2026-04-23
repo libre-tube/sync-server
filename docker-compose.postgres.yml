@@ -1,7 +1,7 @@
 services:
   sync:
     container_name: libretube-sync
-    image: ghcr.io/libretube/libretube-sync:latest-postgres
+    image: ghcr.io/libre-tube/sync-server:main-postgres
     build:
       context: .
       args:
