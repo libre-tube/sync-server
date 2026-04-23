@@ -10,12 +10,12 @@ use crate::{
     schema::{channel::dsl::channel, subscription::dsl::*},
 };
 
-pub async fn get_subscriptions_by_user_id(
+pub async fn get_subscriptions_by_account_id(
     conn: &mut DbConnection,
-    user_id_: &str,
+    account_id_: &str,
 ) -> Result<Vec<models::Channel>, DbError> {
     let item = subscription
-        .filter(user_id.eq(user_id_.to_string()))
+        .filter(account_id.eq(account_id_.to_string()))
         .inner_join(channel::table())
         .select(models::Channel::as_select())
         .load::<models::Channel>(conn)
@@ -24,15 +24,15 @@ pub async fn get_subscriptions_by_user_id(
     Ok(item)
 }
 
-pub async fn add_subscription_by_user_id(
+pub async fn add_subscription_by_account_id(
     conn: &mut DbConnection,
     channel_: &Channel,
-    user_id_: &str,
+    account_id_: &str,
 ) -> Result<(), DbError> {
     create_or_update_channel(conn, channel_).await?;
 
     let new_subscription = Subscription {
-        user_id: user_id_.to_string(),
+        account_id: account_id_.to_string(),
         channel_id: channel_.id.clone(),
     };
     diesel::insert_into(subscription)
@@ -44,15 +44,15 @@ pub async fn add_subscription_by_user_id(
     Ok(())
 }
 
-pub async fn remove_subscription_by_user_id(
+pub async fn remove_subscription_by_account_id(
     conn: &mut DbConnection,
     channel_id_: &str,
-    user_id_: &str,
+    account_id_: &str,
 ) -> Result<(), DbError> {
     diesel::delete(
         subscription.filter(
-            user_id
-                .eq(user_id_.to_string())
+            account_id
+                .eq(account_id_.to_string())
                 .and(channel_id.eq(channel_id_.to_string())),
         ),
     )

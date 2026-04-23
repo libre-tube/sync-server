@@ -1,7 +1,8 @@
--- IMPORTANT: to successfully create tables, there may not be any trailing comma in the create statement
+-- IMPORTANT: to successfully create tables in SQLite, there may not be any trailing comma in the create statement
 -- idk who thought that this would be a good idea, but well ...
 
-CREATE TABLE IF NOT EXISTS user
+-- The `user` keyword is reserved in PostgreSQL, so the user table is named `account`.
+CREATE TABLE IF NOT EXISTS account
 (
     id VARCHAR PRIMARY KEY NOT NULL,
     name_hash VARCHAR NOT NULL UNIQUE,
@@ -18,15 +19,15 @@ CREATE TABLE IF NOT EXISTS channel
 
 CREATE TABLE IF NOT EXISTS subscription
 (
-    user_id VARCHAR NOT NULL REFERENCES user(id),
+    account_id VARCHAR NOT NULL REFERENCES account(id),
     channel_id VARCHAR NOT NULL REFERENCES channel(id),
-    PRIMARY KEY (user_id, channel_id)
+    PRIMARY KEY (account_id, channel_id)
 );
 
 CREATE TABLE IF NOT EXISTS playlist
 (
     id VARCHAR PRIMARY KEY NOT NULL,
-    user_id VARCHAR NOT NULL REFERENCES user(id),
+    account_id VARCHAR NOT NULL REFERENCES account(id),
     title VARCHAR NOT NULL,
     description VARCHAR NOT NULL,
     thumbnail_url VARCHAR

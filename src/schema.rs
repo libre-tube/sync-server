@@ -1,6 +1,14 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    account (id) {
+        id -> Text,
+        name_hash -> Text,
+        password_hash -> Text,
+    }
+}
+
+diesel::table! {
     channel (id) {
         id -> Text,
         name -> Text,
@@ -12,7 +20,7 @@ diesel::table! {
 diesel::table! {
     playlist (id) {
         id -> Text,
-        user_id -> Text,
+        account_id -> Text,
         title -> Text,
         description -> Text,
         thumbnail_url -> Nullable<Text>,
@@ -27,17 +35,9 @@ diesel::table! {
 }
 
 diesel::table! {
-    subscription (user_id, channel_id) {
-        user_id -> Text,
+    subscription (account_id, channel_id) {
+        account_id -> Text,
         channel_id -> Text,
-    }
-}
-
-diesel::table! {
-    user (id) {
-        id -> Text,
-        name_hash -> Text,
-        password_hash -> Text,
     }
 }
 
@@ -52,18 +52,18 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(playlist -> user (user_id));
+diesel::joinable!(playlist -> account (account_id));
 diesel::joinable!(playlist_video_member -> playlist (playlist_id));
 diesel::joinable!(playlist_video_member -> video (video_id));
+diesel::joinable!(subscription -> account (account_id));
 diesel::joinable!(subscription -> channel (channel_id));
-diesel::joinable!(subscription -> user (user_id));
 diesel::joinable!(video -> channel (uploader_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    account,
     channel,
     playlist,
     playlist_video_member,
     subscription,
-    user,
     video,
 );

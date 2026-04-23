@@ -5,7 +5,7 @@ use actix_web::{
 };
 use utoipa_actix_web::scope::Scope;
 
-use crate::models::User;
+use crate::models::Account;
 
 pub mod playlists;
 pub mod subscriptions;
@@ -34,8 +34,8 @@ macro_rules! get_db_conn {
     };
 }
 
-pub(crate) fn get_user(req: &HttpRequest) -> User {
+pub(crate) fn get_account(req: &HttpRequest) -> Account {
     let extensions = req.extensions();
-    let user = extensions.get::<User>().unwrap();
-    user.clone()
+    let account = extensions.get::<Account>().unwrap();
+    account.clone()
 }

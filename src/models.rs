@@ -6,8 +6,8 @@ use super::schema::*;
 #[derive(
     Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Insertable, AsChangeset, ToSchema,
 )]
-#[diesel(table_name = user)]
-pub struct User {
+#[diesel(table_name = account)]
+pub struct Account {
     pub id: String,
     pub name_hash: String,
     pub password_hash: String,
@@ -25,12 +25,12 @@ pub struct Channel {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Insertable, ToSchema)]
-#[diesel(primary_key(user_id, channel_id))]
+#[diesel(primary_key(account_id, channel_id))]
 #[diesel(belongs_to(User))]
 #[diesel(belongs_to(Channel))]
 #[diesel(table_name = subscription)]
 pub struct Subscription {
-    pub user_id: String,
+    pub account_id: String,
     pub channel_id: String,
 }
 
@@ -41,7 +41,7 @@ pub struct Subscription {
 #[diesel(table_name = playlist)]
 pub struct Playlist {
     pub id: String,
-    pub user_id: String,
+    pub account_id: String,
     pub title: String,
     pub description: String,
     pub thumbnail_url: Option<String>,

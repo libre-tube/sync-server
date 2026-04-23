@@ -6,12 +6,12 @@ use diesel::result::DatabaseErrorKind;
 use utoipa_actix_web::scope;
 use uuid::Uuid;
 
-use crate::database::user::{
-    delete_existing_user, find_user_by_id, find_user_by_name_hash, insert_new_user,
+use crate::database::account::{
+    delete_existing_account, find_account_by_id, find_account_by_name_hash, insert_new_account,
 };
 use crate::dto::LoginResponse;
-use crate::handlers::{ScopedHandler, get_user};
-use crate::util::{generate_jwt, hash_password, hash_username, verify_jwt, verify_password};
+use crate::handlers::{ScopedHandler, get_account};
+use crate::util::{generate_jwt, hash_password, hash_accountname, verify_jwt, verify_password};
 use crate::{SECRET_KEY, WebData, dto, get_db_conn, models};
 
 const AUTH_HEADER_KEY: &str = "Authorization";
@@ -27,21 +27,21 @@ impl ScopedHandler for UserHandler {
             Error = actix_web::Error,
         >,
     > {
-        scope::scope("/user")
-            .service(register_user)
-            .service(login_user)
+        scope::scope("/account")
+            .service(register_account)
+            .service(login_account)
             // services that require auth start here
             .service(
                 scope::scope("")
                     .wrap(actix_web::middleware::from_fn(auth_middleware))
-                    .service(delete_user),
+                    .service(delete_account),
             )
     }
 }
 
 #[utoipa::path(responses((status = OK, body = LoginResponse)))]
 #[post("/register")]
-async fn register_user(
+async fn register_account(
     pool: WebData,
     form: web::Json<dto::RegisterUser>,
 ) -> actix_web::Result<impl Responder> {
@@ -52,22 +52,22 @@ async fn register_user(
         return Err(error::ErrorBadRequest("password too short (8 chars min)"));
     }
 
-    let user = models::User {
+    let account = models::Account {
         id: Uuid::now_v7().to_string(),
-        name_hash: hash_username(&form.name, SECRET_KEY.as_bytes()),
+        name_hash: hash_accountname(&form.name, SECRET_KEY.as_bytes()),
         password_hash: hash_password(&form.password),
     };
 
-    let user = insert_new_user(&mut conn, &user)
+    let account = insert_new_account(&mut conn, &account)
         .await
         .map_err(|err| match err {
             diesel::result::Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                error::ErrorConflict("username already taken")
+                error::ErrorConflict("accountname already taken")
             }
             _ => error::ErrorInternalServerError(err),
         })?;
 
-    match generate_jwt(&user, SECRET_KEY.as_bytes()) {
+    match generate_jwt(&account, SECRET_KEY.as_bytes()) {
         Ok(jwt) => {
             let resp = LoginResponse { jwt };
             Ok(HttpResponse::Created().json(resp))
@@ -78,26 +78,26 @@ async fn register_user(
 
 #[utoipa::path(responses((status = CREATED, body = LoginResponse)))]
 #[post("/login")]
-async fn login_user(
+async fn login_account(
     pool: WebData,
     form: web::Json<dto::LoginUser>,
 ) -> actix_web::Result<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
-    let name = hash_username(&form.name, SECRET_KEY.as_bytes());
-    let Some(user) = find_user_by_name_hash(&mut conn, &name)
+    let name = hash_accountname(&form.name, SECRET_KEY.as_bytes());
+    let Some(account) = find_account_by_name_hash(&mut conn, &name)
         .await
         .ok()
         .flatten()
     else {
-        return Err(error::ErrorForbidden("invalid username or password"));
+        return Err(error::ErrorForbidden("invalid accountname or password"));
     };
 
-    if !verify_password(&form.password, &user.password_hash) {
-        return Err(error::ErrorForbidden("invalid username or password"));
+    if !verify_password(&form.password, &account.password_hash) {
+        return Err(error::ErrorForbidden("invalid accountname or password"));
     }
 
-    match generate_jwt(&user, SECRET_KEY.as_bytes()) {
+    match generate_jwt(&account, SECRET_KEY.as_bytes()) {
         Ok(jwt) => {
             let resp = LoginResponse { jwt };
             Ok(HttpResponse::Ok().json(resp))
@@ -108,25 +108,25 @@ async fn login_user(
 
 #[utoipa::path(responses((status = OK)))]
 #[delete("/delete")]
-async fn delete_user(
+async fn delete_account(
     req: HttpRequest,
     pool: WebData,
     form: web::Json<dto::DeleteUser>,
 ) -> actix_web::Result<impl Responder> {
     let mut conn = get_db_conn!(pool);
-    let user = get_user(&req);
+    let account = get_account(&req);
 
-    if !verify_password(&form.password, &user.password_hash) {
-        return Err(error::ErrorForbidden("invalid username or password"));
+    if !verify_password(&form.password, &account.password_hash) {
+        return Err(error::ErrorForbidden("invalid accountname or password"));
     }
 
-    match delete_existing_user(&mut conn, &user.id).await {
+    match delete_existing_account(&mut conn, &account.id).await {
         Ok(_) => Ok(HttpResponse::Ok()),
         Err(err) => Err(error::ErrorInternalServerError(err)),
     }
 }
 
-/// Middleware that ensures that the user is authenticated.
+/// Middleware that ensures that the account is authenticated.
 pub async fn auth_middleware(
     req: ServiceRequest,
     next: Next<impl MessageBody>,
@@ -143,20 +143,20 @@ pub async fn auth_middleware(
     let Some(jwt) = auth_cookie.or(auth_header) else {
         return Err(error::ErrorUnauthorized("missing authentication token"));
     };
-    let Ok(user_id) = verify_jwt(&jwt, SECRET_KEY.as_bytes()) else {
+    let Ok(account_id) = verify_jwt(&jwt, SECRET_KEY.as_bytes()) else {
         return Err(error::ErrorUnauthorized("invalid authentication token"));
     };
 
     let pool: WebData = req.app_data().cloned().unwrap();
     let mut conn = get_db_conn!(pool);
 
-    let Some(user) = find_user_by_id(&mut conn, &user_id).await.ok().flatten() else {
-        return Err(error::ErrorBadRequest("user does not exist"));
+    let Some(account) = find_account_by_id(&mut conn, &account_id).await.ok().flatten() else {
+        return Err(error::ErrorBadRequest("account does not exist"));
     };
 
-    // append user to request extensions so that it can be accessed with
+    // append account to request extensions so that it can be accessed with
     // `req.extensions().get::<User>()` by handlers
-    req.extensions_mut().insert(user);
+    req.extensions_mut().insert(account);
 
     next.call(req).await
 }

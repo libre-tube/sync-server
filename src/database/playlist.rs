@@ -121,12 +121,12 @@ pub async fn get_playlist_by_id_with_videos(
     Ok((playlist_, videos))
 }
 
-pub async fn get_playlists_by_user_id(
+pub async fn get_playlists_by_account_id(
     conn: &mut DbConnection,
-    user_id_: &str,
+    account_id_: &str,
 ) -> Result<Vec<Playlist>, DbError> {
     let playlists = playlist
-        .filter(user_id.eq(user_id_.to_string()))
+        .filter(account_id.eq(account_id_.to_string()))
         .select(Playlist::as_select())
         .load(conn)
         .await?;

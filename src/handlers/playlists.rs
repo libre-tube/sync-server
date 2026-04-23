@@ -9,13 +9,13 @@ use crate::{
         channel::create_or_update_channel,
         playlist::{
             add_video_to_playlist, create_new_playlist, delete_playlist_by_id, get_playlist_by_id,
-            get_playlist_by_id_with_videos, get_playlists_by_user_id, remove_video_from_playlist,
-            update_existing_playlist,
+            get_playlist_by_id_with_videos, get_playlists_by_account_id,
+            remove_video_from_playlist, update_existing_playlist,
         },
     },
     dto::{CreatePlaylist, CreateVideo, PlaylistResponse},
     get_db_conn,
-    handlers::{ScopedHandler, get_user, user::auth_middleware},
+    handlers::{ScopedHandler, get_account, user::auth_middleware},
     models::{Playlist, Video},
 };
 
@@ -50,12 +50,12 @@ async fn get_playlist(
     playlist_id: web::Path<String>,
 ) -> actix_web::Result<impl Responder> {
     let mut conn = get_db_conn!(pool);
-    let user_id = get_user(&req).id;
+    let account_id = get_account(&req).id;
 
     let (playlist, videos) = get_playlist_by_id_with_videos(&mut conn, &playlist_id)
         .await
         .map_err(error::ErrorInternalServerError)?;
-    if playlist.user_id != user_id {
+    if playlist.account_id != account_id {
         return Err(error::ErrorForbidden("not the owner of the playlist"));
     }
 
@@ -72,9 +72,9 @@ async fn get_playlist(
 #[get("/")]
 async fn get_playlists(req: HttpRequest, pool: WebData) -> actix_web::Result<impl Responder> {
     let mut conn = get_db_conn!(pool);
-    let user_id = get_user(&req).id;
+    let account_id = get_account(&req).id;
 
-    match get_playlists_by_user_id(&mut conn, &user_id).await {
+    match get_playlists_by_account_id(&mut conn, &account_id).await {
         Ok(playlists) => Ok(HttpResponse::Ok().json(playlists)),
         Err(err) => Err(error::ErrorInternalServerError(err)),
     }
@@ -88,11 +88,11 @@ async fn create_playlist(
     playlist_data: web::Json<CreatePlaylist>,
 ) -> actix_web::Result<impl Responder> {
     let mut conn = get_db_conn!(pool);
-    let user = get_user(&req);
+    let account = get_account(&req);
 
     let playlist = Playlist {
         id: String::new(),
-        user_id: user.id.clone(),
+        account_id: account.id.clone(),
         title: playlist_data.title.clone(),
         description: playlist_data.description.clone(),
         thumbnail_url: playlist_data.thumbnail_url.clone(),
@@ -113,18 +113,18 @@ async fn update_playlist(
     playlist_data: web::Json<CreatePlaylist>,
 ) -> actix_web::Result<impl Responder> {
     let mut conn = get_db_conn!(pool);
-    let user = get_user(&req);
+    let account = get_account(&req);
 
     let playlist = get_playlist_by_id(&mut conn, &playlist_id)
         .await
         .map_err(error::ErrorInternalServerError)?;
-    if playlist.user_id != user.id {
+    if playlist.account_id != account.id {
         return Err(error::ErrorForbidden("not the owner of the playlist"));
     }
 
     let playlist = Playlist {
         id: playlist_id.clone(),
-        user_id: user.id.clone(),
+        account_id: account.id.clone(),
         title: playlist_data.title.clone(),
         description: playlist_data.description.clone(),
         thumbnail_url: playlist_data.thumbnail_url.clone(),
@@ -144,12 +144,12 @@ async fn delete_playlist(
     playlist_id: web::Path<String>,
 ) -> actix_web::Result<impl Responder> {
     let mut conn = get_db_conn!(pool);
-    let user = get_user(&req);
+    let account = get_account(&req);
 
     let playlist = get_playlist_by_id(&mut conn, &playlist_id)
         .await
         .map_err(error::ErrorInternalServerError)?;
-    if playlist.user_id != user.id {
+    if playlist.account_id != account.id {
         return Err(error::ErrorForbidden("not the owner of the playlist"));
     }
 
@@ -168,12 +168,12 @@ async fn add_to_playlist(
     video_data: web::Json<CreateVideo>,
 ) -> actix_web::Result<impl Responder> {
     let mut conn = get_db_conn!(pool);
-    let user_id = get_user(&req).id;
+    let account_id = get_account(&req).id;
 
     let playlist = get_playlist_by_id(&mut conn, &playlist_id)
         .await
         .map_err(error::ErrorInternalServerError)?;
-    if playlist.user_id != user_id {
+    if playlist.account_id != account_id {
         return Err(error::ErrorForbidden("not the owner of the playlist"));
     }
 
@@ -205,14 +205,14 @@ async fn remove_from_playlist(
     path: web::Path<(String, String)>,
 ) -> actix_web::Result<impl Responder> {
     let mut conn = get_db_conn!(pool);
-    let user_id = get_user(&req).id;
+    let account_id = get_account(&req).id;
 
     let (playlist_id, video_id) = path.into_inner();
 
     let playlist = get_playlist_by_id(&mut conn, &playlist_id)
         .await
         .map_err(error::ErrorInternalServerError)?;
-    if playlist.user_id != user_id {
+    if playlist.account_id != account_id {
         return Err(error::ErrorForbidden("not the owner of the playlist"));
     }
 

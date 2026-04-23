@@ -8,7 +8,7 @@ use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode}
 use sha2::Sha256;
 
 use crate::dto::JwtClaims;
-use crate::models::User;
+use crate::models::Account;
 
 pub fn bytes_to_hex_string(bytes: &[u8]) -> String {
     String::from("0x")
@@ -19,7 +19,7 @@ pub fn bytes_to_hex_string(bytes: &[u8]) -> String {
             .join("")
 }
 
-pub fn generate_jwt(user: &User, secret_key: &[u8]) -> jsonwebtoken::errors::Result<String> {
+pub fn generate_jwt(account: &Account, secret_key: &[u8]) -> jsonwebtoken::errors::Result<String> {
     let key = EncodingKey::from_secret(secret_key);
     // tokens are valid for one year, should be enough in most cases
     let expiration_date = SystemTime::now()
@@ -30,7 +30,7 @@ pub fn generate_jwt(user: &User, secret_key: &[u8]) -> jsonwebtoken::errors::Res
         .as_millis();
 
     let claims = JwtClaims {
-        sub: user.id.clone(),
+        sub: account.id.clone(),
         exp: expiration_date as usize,
     };
     encode(&Header::default(), &claims, &key)
@@ -64,9 +64,9 @@ pub fn verify_password(password: &str, password_hash: &str) -> bool {
         .is_ok()
 }
 
-/// Generate HMAC of username. Usernames are not stored in plaintext for better anonymity.
-pub fn hash_username(username: &str, secret_key: &[u8]) -> String {
-    let mut mac = Hmac::<Sha256>::new_from_slice(username.as_bytes()).unwrap();
+/// Generate HMAC of accountname. Usernames are not stored in plaintext for better anonymity.
+pub fn hash_accountname(accountname: &str, secret_key: &[u8]) -> String {
+    let mut mac = Hmac::<Sha256>::new_from_slice(accountname.as_bytes()).unwrap();
     mac.update(secret_key);
 
     let result = &mac.finalize().into_bytes();
