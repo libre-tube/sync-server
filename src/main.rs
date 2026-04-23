@@ -16,12 +16,12 @@ use crate::handlers::{
     subscriptions::SubscriptionsHandler, user::UserHandler,
 };
 
+mod auth;
 mod database;
 mod dto;
 mod handlers;
 mod models;
 mod schema;
-mod util;
 
 static SECRET_KEY: LazyLock<String> = LazyLock::new(|| {
     env::var("SECRET_KEY").expect("Please set the `SECRET_KEY` env variable to a random value!")

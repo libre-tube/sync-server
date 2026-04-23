@@ -6,12 +6,12 @@ use diesel::result::DatabaseErrorKind;
 use utoipa_actix_web::scope;
 use uuid::Uuid;
 
+use crate::auth::{generate_jwt, hash_accountname, hash_password, verify_jwt, verify_password};
 use crate::database::account::{
     delete_existing_account, find_account_by_id, find_account_by_name_hash, insert_new_account,
 };
 use crate::dto::LoginResponse;
 use crate::handlers::{ScopedHandler, get_account};
-use crate::util::{generate_jwt, hash_password, hash_accountname, verify_jwt, verify_password};
 use crate::{SECRET_KEY, WebData, dto, get_db_conn, models};
 
 const AUTH_HEADER_KEY: &str = "Authorization";
@@ -150,7 +150,11 @@ pub async fn auth_middleware(
     let pool: WebData = req.app_data().cloned().unwrap();
     let mut conn = get_db_conn!(pool);
 
-    let Some(account) = find_account_by_id(&mut conn, &account_id).await.ok().flatten() else {
+    let Some(account) = find_account_by_id(&mut conn, &account_id)
+        .await
+        .ok()
+        .flatten()
+    else {
         return Err(error::ErrorBadRequest("account does not exist"));
     };
 
