@@ -40,7 +40,7 @@ jsonwebtoken = { version = "10.3.0", features = ["rust_crypto"] }
 sha2 = "0.11.0"
 
 [features]
-# default = ["sqlite"]
-default = ["postgres"]
+default = ["sqlite"]
+# default = ["postgres"]
 postgres = ["diesel-async/postgres"]
 sqlite = ["diesel-async/sqlite", "diesel/returning_clauses_for_sqlite_3_35"]

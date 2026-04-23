@@ -7,6 +7,7 @@ use utoipa_actix_web::scope::Scope;
 
 use crate::models::Account;
 
+pub mod health;
 pub mod playlists;
 pub mod subscriptions;
 pub mod user;

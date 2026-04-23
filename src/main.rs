@@ -12,8 +12,8 @@ use utoipa_actix_web::AppExt;
 use utoipa_scalar::{Scalar, Servable};
 
 use crate::handlers::{
-    ScopedHandler, playlists::PlaylistsHandler, subscriptions::SubscriptionsHandler,
-    user::UserHandler,
+    ScopedHandler, health::HealthHandler, playlists::PlaylistsHandler,
+    subscriptions::SubscriptionsHandler, user::UserHandler,
 };
 
 mod database;
@@ -64,6 +64,7 @@ async fn main() -> io::Result<()> {
             .into_utoipa_app()
             // add DB pool handle to app data; enables use of `web::Data<DbPool>` extractor
             .app_data(web::Data::new(pool.clone()))
+            .service(HealthHandler::get_service())
             .service(UserHandler::get_service())
             .service(SubscriptionsHandler::get_service())
             .service(PlaylistsHandler::get_service())
