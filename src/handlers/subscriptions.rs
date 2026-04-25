@@ -1,13 +1,13 @@
 use actix_web::{
-    HttpRequest, HttpResponse, Responder, delete, error, get, middleware::from_fn, post, put, web,
+    HttpRequest, HttpResponse, Responder, delete, error, get, middleware::from_fn, put, web,
 };
 use utoipa_actix_web::scope;
 
 use crate::{
     WebData,
     database::subscription::{
-        add_subscription_by_account_id, get_subscriptions_by_account_id,
-        remove_subscription_by_account_id,
+        add_subscription_by_account_id, get_subscription_channel_by_account_id,
+        get_subscriptions_by_account_id, remove_subscription_by_account_id,
     },
     get_db_conn,
     handlers::{ScopedHandler, get_account, user::auth_middleware},
@@ -29,6 +29,7 @@ impl ScopedHandler for SubscriptionsHandler {
         scope("/subscriptions")
             .wrap(from_fn(auth_middleware))
             .service(get_subscriptions)
+            .service(get_subscription)
             .service(subscribe)
             .service(unsubscribe)
     }
@@ -45,6 +46,25 @@ async fn get_subscriptions(req: HttpRequest, pool: WebData) -> actix_web::Result
         .map_err(error::ErrorInternalServerError)?;
 
     Ok(HttpResponse::Ok().json(subscriptions))
+}
+
+#[utoipa::path(responses((status = OK, body = Channel)))]
+#[get("/{channel_id}")]
+async fn get_subscription(
+    req: HttpRequest,
+    pool: WebData,
+    channel_id: web::Path<String>,
+) -> actix_web::Result<impl Responder> {
+    let account = get_account(&req);
+    let mut conn = get_db_conn!(pool);
+
+    match get_subscription_channel_by_account_id(&mut conn, &account.id, &channel_id).await {
+        Ok(channel) => match channel {
+            Some(channel) => Ok(HttpResponse::Ok().json(channel)),
+            None => Err(error::ErrorNotFound("not subscribed to this channel")),
+        },
+        Err(err) => Err(error::ErrorInternalServerError(err)),
+    }
 }
 
 #[utoipa::path(responses((status = CREATED)))]

@@ -1,5 +1,6 @@
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, QueryDsl, SelectableHelper, associations::HasTable,
+    BoolExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper,
+    associations::HasTable,
 };
 use diesel_async::RunQueryDsl;
 
@@ -14,14 +15,31 @@ pub async fn get_subscriptions_by_account_id(
     conn: &mut DbConnection,
     account_id_: &str,
 ) -> Result<Vec<models::Channel>, DbError> {
-    let item = subscription
+    subscription
         .filter(account_id.eq(account_id_.to_string()))
         .inner_join(channel::table())
         .select(models::Channel::as_select())
         .load::<models::Channel>(conn)
-        .await?;
+        .await
+}
 
-    Ok(item)
+/// Get the [Channel], if the user subscribed to it, otherwise [None].
+pub async fn get_subscription_channel_by_account_id(
+    conn: &mut DbConnection,
+    account_id_: &str,
+    channel_id_: &str,
+) -> Result<Option<models::Channel>, DbError> {
+    subscription
+        .filter(
+            account_id
+                .eq(account_id_.to_string())
+                .and(channel_id.eq(channel_id_.to_string())),
+        )
+        .inner_join(channel::table())
+        .select(models::Channel::as_select())
+        .first::<models::Channel>(conn)
+        .await
+        .optional()
 }
 
 pub async fn add_subscription_by_account_id(
