@@ -10,11 +10,11 @@ use crate::{
         channel::create_or_update_channel,
         playlist::{
             add_video_to_playlist, create_new_playlist, delete_playlist_by_id, get_playlist_by_id,
-            get_playlist_by_id_with_videos, get_playlists_by_account_id,
+            get_playlist_by_id_with_videos, get_playlist_video_count, get_playlists_by_account_id,
             remove_video_from_playlist, update_existing_playlist,
         },
     },
-    dto::{CreatePlaylist, CreateVideo, PlaylistResponse},
+    dto::{CreatePlaylist, CreateVideo, ExtendedPlaylist, PlaylistResponse},
     get_db_conn,
     handlers::{ScopedHandler, get_account, user::auth_middleware},
     models::Playlist,
@@ -54,32 +54,47 @@ async fn get_playlist(
     let mut conn = get_db_conn!(pool);
     let account_id = get_account(&req).id;
 
-    let (playlist, videos) = get_playlist_by_id_with_videos(&mut conn, &playlist_id)
+    let Some((playlist, videos)) = get_playlist_by_id_with_videos(&mut conn, &playlist_id)
         .await
-        .map_err(error::ErrorInternalServerError)?;
+        .map_err(error::ErrorInternalServerError)?
+    else {
+        return Err(error::ErrorNotFound("playlist does not exist"));
+    };
     if playlist.account_id != account_id {
         return Err(error::ErrorForbidden("not the owner of the playlist"));
     }
 
-    let videos = videos
+    let videos: Vec<_> = videos
         .iter()
         .map(|(video, channel)| CreateVideo::from((video, channel)))
         .collect();
+
+    let playlist = ExtendedPlaylist::from_playlist(&playlist, videos.len() as u64);
 
     let playlist_response = PlaylistResponse { playlist, videos };
     Ok(HttpResponse::Ok().json(playlist_response))
 }
 
-#[utoipa::path(responses((status = OK, body = Vec<Playlist>)))]
+#[utoipa::path(responses((status = OK, body = Vec<ExtendedPlaylist>)))]
 #[get("/")]
 async fn get_playlists(req: HttpRequest, pool: WebData) -> actix_web::Result<impl Responder> {
     let mut conn = get_db_conn!(pool);
     let account_id = get_account(&req).id;
 
-    match get_playlists_by_account_id(&mut conn, &account_id).await {
-        Ok(playlists) => Ok(HttpResponse::Ok().json(playlists)),
-        Err(err) => Err(error::ErrorInternalServerError(err)),
+    let playlists = get_playlists_by_account_id(&mut conn, &account_id)
+        .await
+        .map_err(error::ErrorInternalServerError)?;
+
+    let mut extended_playlists: Vec<ExtendedPlaylist> = vec![];
+    for playlist in &playlists {
+        let video_count = get_playlist_video_count(&mut conn, &playlist.id)
+            .await
+            .unwrap_or(-1);
+        let extended_playlist = ExtendedPlaylist::from_playlist(playlist, video_count as u64);
+        extended_playlists.push(extended_playlist);
     }
+
+    Ok(HttpResponse::Ok().json(extended_playlists))
 }
 
 #[utoipa::path(responses((status = CREATED, body = Playlist)))]
@@ -135,7 +150,7 @@ async fn update_playlist(
     let mut conn = get_db_conn!(pool);
     let account = get_account(&req);
 
-    get_owned_playlist_or_error(&mut conn, &playlist_id, &account.id).await;
+    get_owned_playlist_or_error(&mut conn, &playlist_id, &account.id).await?;
 
     let playlist = Playlist {
         id: playlist_id.clone(),
@@ -161,7 +176,7 @@ async fn delete_playlist(
     let mut conn = get_db_conn!(pool);
     let account = get_account(&req);
 
-    get_owned_playlist_or_error(&mut conn, &playlist_id, &account.id).await;
+    get_owned_playlist_or_error(&mut conn, &playlist_id, &account.id).await?;
 
     match delete_playlist_by_id(&mut conn, &playlist_id).await {
         Ok(()) => Ok(HttpResponse::Ok().json(())),
@@ -180,7 +195,7 @@ async fn add_to_playlist(
     let mut conn = get_db_conn!(pool);
     let account_id = get_account(&req).id;
 
-    get_owned_playlist_or_error(&mut conn, &playlist_id, &account_id).await;
+    get_owned_playlist_or_error(&mut conn, &playlist_id, &account_id).await?;
 
     let video_datas = video_datas.into_inner();
     let videos_grouped_by_uploader = video_datas

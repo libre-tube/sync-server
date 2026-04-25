@@ -111,8 +111,10 @@ pub async fn get_playlist_by_id(
 pub async fn get_playlist_by_id_with_videos(
     conn: &mut DbConnection,
     playlist_id_: &str,
-) -> Result<(Playlist, Vec<(Video, Channel)>), DbError> {
-    let playlist_ = get_playlist_by_id(conn, playlist_id_).await?;
+) -> Result<Option<(Playlist, Vec<(Video, Channel)>)>, DbError> {
+    let Some(playlist_) = get_playlist_by_id(conn, playlist_id_).await? else {
+        return Ok(None);
+    };
 
     let videos = playlist_video_member
         .filter(playlist_id.eq(playlist_id_.to_string()))
@@ -121,7 +123,19 @@ pub async fn get_playlist_by_id_with_videos(
         .load(conn)
         .await?;
 
-    Ok((playlist_, videos))
+    Ok(Some((playlist_, videos)))
+}
+
+pub async fn get_playlist_video_count(
+    conn: &mut DbConnection,
+    playlist_id_: &str,
+) -> Result<i64, DbError> {
+    playlist_video_member
+        .filter(playlist_id.eq(playlist_id_.to_string()))
+        .inner_join(video::table.inner_join(channel::table))
+        .count()
+        .get_result(conn)
+        .await
 }
 
 pub async fn get_playlists_by_account_id(

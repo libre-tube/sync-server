@@ -32,9 +32,33 @@ pub struct CreatePlaylist {
     pub thumbnail_url: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, Eq, PartialEq)]
+pub struct ExtendedPlaylist {
+    pub id: String,
+    pub account_id: String,
+    pub title: String,
+    pub description: String,
+    pub thumbnail_url: Option<String>,
+    // only difference from playlist is this video count field:
+    // ugly workaround because of https://github.com/diesel-rs/diesel/issues/860
+    pub video_count: u64,
+}
+impl ExtendedPlaylist {
+    pub fn from_playlist(playlist: &Playlist, video_count: u64) -> Self {
+        ExtendedPlaylist {
+            id: playlist.id.clone(),
+            account_id: playlist.account_id.clone(),
+            title: playlist.title.clone(),
+            description: playlist.description.clone(),
+            thumbnail_url: playlist.thumbnail_url.clone(),
+            video_count,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct PlaylistResponse {
-    pub playlist: Playlist,
+    pub playlist: ExtendedPlaylist,
     pub videos: Vec<CreateVideo>,
 }
 
