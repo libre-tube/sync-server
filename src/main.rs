@@ -13,8 +13,8 @@ use utoipa_scalar::{Scalar, Servable};
 
 use crate::{
     handlers::{
-        ScopedHandler, health::HealthHandler, playlists::PlaylistsHandler,
-        subscriptions::SubscriptionsHandler, user::UserHandler,
+        ScopedHandler, health::HealthHandler, playlist_bookmarks::PlaylistBookmarksHandler,
+        playlists::PlaylistsHandler, subscriptions::SubscriptionsHandler, user::UserHandler,
     },
     openapi::ApiDoc,
 };
@@ -67,7 +67,7 @@ async fn main() -> io::Result<()> {
 
     log::info!("starting HTTP server at http://localhost:8080");
 
-     HttpServer::new(move || {
+    HttpServer::new(move || {
         let (app, generated_api) = App::new()
             .into_utoipa_app()
             // add DB pool handle to app data; enables use of `web::Data<DbPool>` extractor
@@ -76,7 +76,8 @@ async fn main() -> io::Result<()> {
                 utoipa_actix_web::scope("/v1")
                     .service(UserHandler::get_service())
                     .service(SubscriptionsHandler::get_service())
-                    .service(PlaylistsHandler::get_service()),
+                    .service(PlaylistsHandler::get_service())
+                    .service(PlaylistBookmarksHandler::get_service()),
             )
             .split_for_parts();
 

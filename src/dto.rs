@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::models::{Channel, Playlist, Video};
+use crate::models::{Channel, Playlist, PublicPlaylist, Video};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema)]
 pub struct RegisterUser {
@@ -32,26 +32,68 @@ pub struct CreatePlaylist {
     pub thumbnail_url: Option<String>,
 }
 
+/// Public (API) view of a playlist owned by a user.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, Eq, PartialEq)]
 pub struct ExtendedPlaylist {
     pub id: String,
-    pub account_id: String,
     pub title: String,
     pub description: String,
     pub thumbnail_url: Option<String>,
     // only difference from playlist is this video count field:
     // ugly workaround because of https://github.com/diesel-rs/diesel/issues/860
-    pub video_count: u64,
+    pub video_count: Option<u64>,
 }
 impl ExtendedPlaylist {
     pub fn from_playlist(playlist: &Playlist, video_count: u64) -> Self {
         ExtendedPlaylist {
             id: playlist.id.clone(),
-            account_id: playlist.account_id.clone(),
             title: playlist.title.clone(),
             description: playlist.description.clone(),
             thumbnail_url: playlist.thumbnail_url.clone(),
-            video_count,
+            video_count: Some(video_count),
+        }
+    }
+
+    pub fn from_public_playlist(playlist: &PublicPlaylist) -> Self {
+        ExtendedPlaylist {
+            id: playlist.id.clone(),
+            title: playlist.title.clone(),
+            description: playlist.description.clone(),
+            thumbnail_url: playlist.thumbnail_url.clone(),
+            video_count: playlist.video_count.map(|count| count as u64),
+        }
+    }
+}
+impl ExtendedPlaylist {
+    pub fn into_public_playlist(self, uploader_id: &str) -> PublicPlaylist {
+        PublicPlaylist {
+            id: self.id,
+            title: self.title,
+            description: self.description,
+            thumbnail_url: self.thumbnail_url,
+            video_count: self.video_count.map(|count| count as i32),
+            uploader_id: uploader_id.to_string(),
+        }
+    }
+}
+
+/// Public (API) view of a read-only playlist (e.g. from YouTube).
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, Eq, PartialEq)]
+pub struct ExtendedPublicPlaylist {
+    pub playlist: ExtendedPlaylist,
+    pub uploader: Channel,
+}
+impl ExtendedPublicPlaylist {
+    pub fn from_public_playlist(playlist: &PublicPlaylist, channel: &Channel) -> Self {
+        ExtendedPublicPlaylist {
+            playlist: ExtendedPlaylist {
+                id: playlist.id.clone(),
+                title: playlist.title.clone(),
+                description: playlist.description.clone(),
+                thumbnail_url: playlist.thumbnail_url.clone(),
+                video_count: playlist.video_count.map(|c| c as u64),
+            },
+            uploader: channel.clone(),
         }
     }
 }
@@ -84,15 +126,15 @@ impl From<(&Video, &Channel)> for CreateVideo {
         }
     }
 }
-impl Into<Video> for &CreateVideo {
-    fn into(self) -> Video {
+impl From<&CreateVideo> for Video {
+    fn from(val: &CreateVideo) -> Self {
         Video {
-            id: self.id.clone(),
-            title: self.title.clone(),
-            upload_date: self.upload_date,
-            uploader_id: self.uploader.id.clone(),
-            thumbnail_url: self.thumbnail_url.clone(),
-            duration: self.duration,
+            id: val.id.clone(),
+            title: val.title.clone(),
+            upload_date: val.upload_date,
+            uploader_id: val.uploader.id.clone(),
+            thumbnail_url: val.thumbnail_url.clone(),
+            duration: val.duration,
         }
     }
 }

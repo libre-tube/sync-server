@@ -117,3 +117,39 @@ pub struct PlaylistVideoMember {
     pub playlist_id: String,
     pub video_id: String,
 }
+
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    Queryable,
+    Selectable,
+    Insertable,
+    AsChangeset,
+    ToSchema,
+    Eq,
+    PartialEq,
+)]
+#[diesel(table_name = public_playlist)]
+#[diesel(belongs_to(Channel, foreign_key = uploader_id))]
+pub struct PublicPlaylist {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub thumbnail_url: Option<String>,
+    pub uploader_id: String,
+    pub video_count: Option<i32>,
+}
+
+#[derive(
+    Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Insertable, ToSchema, Eq, PartialEq,
+)]
+#[diesel(primary_key(account_id, public_playlist_id))]
+#[diesel(belongs_to(PublicPlaylist))]
+#[diesel(belongs_to(Account))]
+#[diesel(table_name = playlist_bookmark)]
+pub struct PlaylistBookmark {
+    pub account_id: String,
+    pub public_playlist_id: String,
+}
