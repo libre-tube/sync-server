@@ -9,7 +9,7 @@ use crate::{
     database::{channel::get_channel_by_id, video::get_video_by_id},
     dto::CreateVideo,
     models::{Channel, Video},
-    youtube::channel::{ChannelFetcher, ChannelRss},
+    youtube::{FeedRss, channel::ChannelFetcher},
 };
 
 const ALLOWED_THUMBNAIL_DOMAINS: [&str; 5] = [
@@ -42,7 +42,7 @@ fn verify_image_url(image_url: &str) -> bool {
 pub async fn validate_channel_information_if_changed(
     conn: &mut DbConnection,
     channel: &Channel,
-) -> actix_web::Result<Option<ChannelRss>> {
+) -> actix_web::Result<Option<FeedRss>> {
     if !CONFIG.validate_submitted_metadata {
         return Ok(None);
     }
@@ -65,7 +65,7 @@ pub async fn validate_channel_information_if_changed(
 /// The return value inside the `Option<ChannelRss>` doesn't say anything about
 /// whether the verification was succesfull, it's only returned in case the caller
 /// wants to re-use the RSS feed info.
-async fn validate_channel_information(channel: &Channel) -> Result<Option<ChannelRss>, String> {
+async fn validate_channel_information(channel: &Channel) -> Result<Option<FeedRss>, String> {
     if !verify_image_url(&channel.avatar) {
         return Err("invalid channel avatar provided".to_string());
     }
@@ -75,7 +75,7 @@ async fn validate_channel_information(channel: &Channel) -> Result<Option<Channe
         .map_err(|err| err.to_string())?;
 
     if !channel_info
-        .name
+        .channel_name
         .trim()
         .eq_ignore_ascii_case(channel.name.trim())
     {
@@ -137,7 +137,7 @@ pub async fn validate_video_information_if_changed(
 /// because its metadata is more accurate.
 fn validate_video_information(
     video_data: CreateVideo,
-    channel_rss: &ChannelRss,
+    channel_rss: &FeedRss,
 ) -> Result<CreateVideo, String> {
     // validate thumbnail URL
     if !verify_image_url(&video_data.thumbnail_url) {
@@ -235,7 +235,6 @@ mod test {
 
     #[actix_rt::test]
     async fn test_video_validator() {
-        // This is probably
         let video = CreateVideo {
             id: "kMO1L5J1cn8".to_string(),
             title: "Minecraft Livestream [FaceCam] | Kotti".to_string(),

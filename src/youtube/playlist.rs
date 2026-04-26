@@ -1,16 +1,14 @@
-//! Safe wrapper for YouTube's channel RSS feeds.
-
 use crate::youtube::{
     FeedRss, YOUTUBE_BASE_URL, YouTubeError, YouTubeResult, feed_parser::FeedParser,
 };
 
-pub struct ChannelFetcher {}
+pub struct PlaylistFetcher {}
 
-impl ChannelFetcher {
-    pub async fn get_channel_rss(channel_id: &str) -> YouTubeResult<FeedRss> {
+impl PlaylistFetcher {
+    pub async fn get_playlist_rss(playlist_id: &str) -> YouTubeResult<FeedRss> {
         let feed_url = format!(
-            "{}/feeds/videos.xml?channel_id={}",
-            YOUTUBE_BASE_URL, channel_id
+            "{}/feeds/videos.xml?playlist_id={}",
+            YOUTUBE_BASE_URL, playlist_id
         );
         let response_body = reqwest::get(feed_url)
             .await
