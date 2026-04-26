@@ -68,9 +68,12 @@ async fn main() -> io::Result<()> {
             .into_utoipa_app()
             // add DB pool handle to app data; enables use of `web::Data<DbPool>` extractor
             .app_data(web::Data::new(pool.clone()))
-            .service(UserHandler::get_service())
-            .service(SubscriptionsHandler::get_service())
-            .service(PlaylistsHandler::get_service())
+            .service(
+                utoipa_actix_web::scope("/v1")
+                    .service(UserHandler::get_service())
+                    .service(SubscriptionsHandler::get_service())
+                    .service(PlaylistsHandler::get_service()),
+            )
             .split_for_parts();
 
         // update displayed metadata in OpenAPI docs
