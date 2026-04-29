@@ -113,7 +113,7 @@ async fn login_account(
     }
 }
 
-#[utoipa::path(responses((status = OK)))]
+#[utoipa::path(responses((status = OK)), security(("api_jwt_token" = [])))]
 #[delete("/delete")]
 async fn delete_account(
     account: Account,

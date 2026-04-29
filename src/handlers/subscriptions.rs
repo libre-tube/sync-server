@@ -33,7 +33,7 @@ impl ScopedHandler for SubscriptionsHandler {
     }
 }
 
-#[utoipa::path(responses((status = OK, body = Vec<Channel>)))]
+#[utoipa::path(responses((status = OK, body = Vec<Channel>)), security(("api_jwt_token" = [])))]
 #[get("/")]
 async fn get_subscriptions(account: Account, pool: WebData) -> actix_web::Result<impl Responder> {
     let mut conn = get_db_conn!(pool);
@@ -45,7 +45,7 @@ async fn get_subscriptions(account: Account, pool: WebData) -> actix_web::Result
     Ok(HttpResponse::Ok().json(subscriptions))
 }
 
-#[utoipa::path(responses((status = OK, body = Channel)))]
+#[utoipa::path(responses((status = OK, body = Channel)), security(("api_jwt_token" = [])))]
 #[get("/{channel_id}")]
 async fn get_subscription(
     account: Account,
@@ -63,7 +63,7 @@ async fn get_subscription(
     }
 }
 
-#[utoipa::path(responses((status = CREATED)))]
+#[utoipa::path(responses((status = CREATED)), security(("api_jwt_token" = [])))]
 #[put("/")]
 async fn subscribe(
     account: Account,
@@ -81,7 +81,7 @@ async fn subscribe(
     }
 }
 
-#[utoipa::path(responses((status = OK)))]
+#[utoipa::path(responses((status = OK)), security(("api_jwt_token" = [])))]
 #[delete("/{channel_id}")]
 async fn unsubscribe(
     account: Account,

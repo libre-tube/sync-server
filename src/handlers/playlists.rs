@@ -74,7 +74,7 @@ async fn get_playlist(
     Ok(HttpResponse::Ok().json(playlist_response))
 }
 
-#[utoipa::path(responses((status = OK, body = Vec<ExtendedPlaylist>)))]
+#[utoipa::path(responses((status = OK, body = Vec<ExtendedPlaylist>)), security(("api_jwt_token" = [])))]
 #[get("/")]
 async fn get_playlists(account: Account, pool: WebData) -> actix_web::Result<impl Responder> {
     let mut conn = get_db_conn!(pool);
@@ -95,7 +95,7 @@ async fn get_playlists(account: Account, pool: WebData) -> actix_web::Result<imp
     Ok(HttpResponse::Ok().json(extended_playlists))
 }
 
-#[utoipa::path(responses((status = CREATED, body = Playlist)))]
+#[utoipa::path(responses((status = CREATED, body = Playlist)), security(("api_jwt_token" = [])))]
 #[post("/")]
 async fn create_playlist(
     account: Account,
@@ -139,7 +139,7 @@ async fn get_owned_playlist_or_error(
     Ok(playlist)
 }
 
-#[utoipa::path(responses((status = OK, body = Playlist)))]
+#[utoipa::path(responses((status = OK, body = Playlist)), security(("api_jwt_token" = [])))]
 #[patch("/{playlist_id}")]
 async fn update_playlist(
     account: Account,
@@ -171,7 +171,7 @@ async fn update_playlist(
     }
 }
 
-#[utoipa::path(responses((status = OK)))]
+#[utoipa::path(responses((status = OK)), security(("api_jwt_token" = [])))]
 #[delete("/{playlist_id}")]
 async fn delete_playlist(
     account: Account,
@@ -188,7 +188,7 @@ async fn delete_playlist(
     }
 }
 
-#[utoipa::path(responses((status = CREATED)))]
+#[utoipa::path(responses((status = CREATED)), security(("api_jwt_token" = [])))]
 #[post("/{playlist_id}/videos")]
 async fn add_to_playlist(
     account: Account,
@@ -226,7 +226,7 @@ async fn add_to_playlist(
     Ok(HttpResponse::Created())
 }
 
-#[utoipa::path(responses((status = OK)))]
+#[utoipa::path(responses((status = OK)), security(("api_jwt_token" = [])))]
 #[delete("/{playlist_id}/videos/{video_id}")]
 async fn remove_from_playlist(
     account: Account,

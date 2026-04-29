@@ -1,19 +1,22 @@
 #[macro_use]
 extern crate diesel;
 
-use std::{env, io, sync::LazyLock};
+use std::{io, sync::LazyLock};
 
 use actix_web::{App, HttpServer, middleware, web};
 use diesel_async::pooled_connection::{AsyncDieselConnectionManager, PoolError, bb8::Pool};
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use log::error;
-use utoipa::openapi::LicenseBuilder;
+use utoipa::OpenApi;
 use utoipa_actix_web::AppExt;
 use utoipa_scalar::{Scalar, Servable};
 
-use crate::handlers::{
-    ScopedHandler, health::HealthHandler, playlists::PlaylistsHandler,
-    subscriptions::SubscriptionsHandler, user::UserHandler,
+use crate::{
+    handlers::{
+        ScopedHandler, health::HealthHandler, playlists::PlaylistsHandler,
+        subscriptions::SubscriptionsHandler, user::UserHandler,
+    },
+    openapi::ApiDoc,
 };
 
 mod auth;
@@ -22,6 +25,7 @@ mod database;
 mod dto;
 mod handlers;
 mod models;
+mod openapi;
 mod schema;
 mod validation;
 mod youtube;
@@ -63,8 +67,8 @@ async fn main() -> io::Result<()> {
 
     log::info!("starting HTTP server at http://localhost:8080");
 
-    HttpServer::new(move || {
-        let (app, mut api) = App::new()
+     HttpServer::new(move || {
+        let (app, generated_api) = App::new()
             .into_utoipa_app()
             // add DB pool handle to app data; enables use of `web::Data<DbPool>` extractor
             .app_data(web::Data::new(pool.clone()))
@@ -73,17 +77,9 @@ async fn main() -> io::Result<()> {
             .service(PlaylistsHandler::get_service())
             .split_for_parts();
 
-        // update displayed metadata in OpenAPI docs
-        api.info.title = String::from(env!("CARGO_PKG_NAME"));
-        api.info.version = String::from(env!("CARGO_PKG_VERSION"));
-        api.info.description = Some(String::from(env!("CARGO_PKG_DESCRIPTION")));
-        api.info.license = Some(
-            LicenseBuilder::new()
-                .identifier(Some(env!("CARGO_PKG_LICENSE")))
-                .name(env!("CARGO_PKG_LICENSE"))
-                .build(),
-        );
-        api.info.contact = None;
+        // add additional meta and security info
+        let mut api = ApiDoc::openapi();
+        api.merge(generated_api);
 
         // docs service must be registered before health handler!
         app.service(Scalar::with_url("/docs", api))
