@@ -60,6 +60,21 @@ diesel::table! {
 }
 
 diesel::table! {
+    subscription_group (id) {
+        id -> Text,
+        account_id -> Text,
+        title -> Text,
+    }
+}
+
+diesel::table! {
+    subscription_group_member (subscription_group_id, channel_id) {
+        subscription_group_id -> Text,
+        channel_id -> Text,
+    }
+}
+
+diesel::table! {
     video (id) {
         id -> Text,
         title -> Text,
@@ -88,6 +103,9 @@ diesel::joinable!(playlist_video_member -> video (video_id));
 diesel::joinable!(public_playlist -> channel (uploader_id));
 diesel::joinable!(subscription -> account (account_id));
 diesel::joinable!(subscription -> channel (channel_id));
+diesel::joinable!(subscription_group -> account (account_id));
+diesel::joinable!(subscription_group_member -> channel (channel_id));
+diesel::joinable!(subscription_group_member -> subscription_group (subscription_group_id));
 diesel::joinable!(video -> channel (uploader_id));
 diesel::joinable!(watch_history -> account (account_id));
 diesel::joinable!(watch_history -> video (video_id));
@@ -100,6 +118,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     playlist_video_member,
     public_playlist,
     subscription,
+    subscription_group,
+    subscription_group_member,
     video,
     watch_history,
 );

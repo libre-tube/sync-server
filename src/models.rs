@@ -49,7 +49,7 @@ pub struct Channel {
     Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Insertable, ToSchema, Eq, PartialEq,
 )]
 #[diesel(primary_key(account_id, channel_id))]
-#[diesel(belongs_to(User))]
+#[diesel(belongs_to(Account))]
 #[diesel(belongs_to(Channel))]
 #[diesel(table_name = subscription)]
 pub struct Subscription {
@@ -70,8 +70,44 @@ pub struct Subscription {
     ToSchema,
     Eq,
     PartialEq,
+    Ord,
+    PartialOrd,
 )]
-#[diesel(belongs_to(User))]
+#[diesel(belongs_to(Account))]
+#[diesel(table_name = subscription_group)]
+pub struct SubscriptionGroup {
+    pub id: String,
+    #[serde(skip)]
+    pub account_id: String,
+    pub title: String,
+}
+
+#[derive(
+    Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Insertable, ToSchema, Eq, PartialEq,
+)]
+#[diesel(primary_key(channel_group_id, channel_id))]
+#[diesel(belongs_to(ChannelGroup))]
+#[diesel(belongs_to(Channel))]
+#[diesel(table_name = subscription_group_member)]
+pub struct SubscriptionGroupMember {
+    pub subscription_group_id: String,
+    pub channel_id: String,
+}
+
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    Queryable,
+    Selectable,
+    Insertable,
+    AsChangeset,
+    ToSchema,
+    Eq,
+    PartialEq,
+)]
+#[diesel(belongs_to(Account))]
 #[diesel(table_name = playlist)]
 pub struct Playlist {
     pub id: String,
@@ -157,7 +193,9 @@ pub struct PlaylistBookmark {
     pub public_playlist_id: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, diesel_derive_enum::DbEnum, ToSchema)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, Eq, PartialEq, diesel_derive_enum::DbEnum, ToSchema,
+)]
 pub enum WatchedState {
     Planned,
     Watching,
@@ -166,7 +204,17 @@ pub enum WatchedState {
 }
 
 #[derive(
-    Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Insertable, ToSchema, Eq, PartialEq, AsChangeset
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    Queryable,
+    Selectable,
+    Insertable,
+    ToSchema,
+    Eq,
+    PartialEq,
+    AsChangeset,
 )]
 #[diesel(primary_key(account_id, video_id))]
 #[diesel(belongs_to(Video))]
