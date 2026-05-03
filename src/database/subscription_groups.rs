@@ -1,4 +1,6 @@
-use diesel::{BoolExpressionMethods, ExpressionMethods, QueryDsl, SelectableHelper};
+use diesel::{
+    BoolExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper,
+};
 use diesel_async::RunQueryDsl;
 use itertools::Itertools;
 
@@ -9,7 +11,7 @@ use crate::{
     schema::{channel, subscription_group::dsl::*, subscription_group_member::dsl::*},
 };
 
-pub async fn get_subscription_groups(
+pub async fn get_subscription_groups_by_account_id(
     conn: &mut DbConnection,
     account_id_: &str,
 ) -> Result<Vec<(SubscriptionGroup, Vec<Channel>)>, DbError> {
@@ -35,7 +37,23 @@ pub async fn get_subscription_groups(
     Ok(grouped.collect())
 }
 
-pub async fn get_channels_in_group(
+pub async fn get_subscription_group_by_id(
+    conn: &mut DbConnection,
+    subscription_group_id_: &str,
+    account_id_: &str,
+) -> Result<Option<SubscriptionGroup>, DbError> {
+    subscription_group
+        .filter(
+            id.eq(subscription_group_id_)
+                .and(account_id.eq(account_id_)),
+        )
+        .select(SubscriptionGroup::as_select())
+        .first(conn)
+        .await
+        .optional()
+}
+
+pub async fn get_subscription_group_channels_by_id(
     conn: &mut DbConnection,
     subscription_group_id_: &str,
 ) -> Result<Vec<Channel>, DbError> {
@@ -73,8 +91,13 @@ pub async fn update_existing_subscription_group(
 pub async fn delete_subscription_group_by_id(
     conn: &mut DbConnection,
     subscription_group_id_: &str,
+    account_id_: &str,
 ) -> Result<(), DbError> {
-    diesel::delete(subscription_group.filter(id.eq(subscription_group_id_)))
+    diesel::delete(subscription_group)
+        .filter(
+            id.eq(subscription_group_id_)
+                .and(account_id.eq(account_id_)),
+        )
         .execute(conn)
         .await?;
 
@@ -99,7 +122,7 @@ pub async fn add_channel_to_subscription_group(
     Ok(())
 }
 
-pub async fn remove_from_subscription_group(
+pub async fn remove_channel_from_subscription_group(
     conn: &mut DbConnection,
     subscription_group_id_: &str,
     channel_id_: &str,
