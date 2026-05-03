@@ -15,11 +15,16 @@ pub async fn get_subscription_groups_by_account_id(
     conn: &mut DbConnection,
     account_id_: &str,
 ) -> Result<Vec<(SubscriptionGroup, Vec<Channel>)>, DbError> {
-    let results = subscription_group
-        .inner_join(subscription_group_member.inner_join(channel::table))
+    // Left join to ensure that groups without any linked channels are loaded as well
+    // https://diesel.rs/guides/relations/#left-join
+    let results: Vec<(SubscriptionGroup, Option<Channel>)> = subscription_group
+        .left_outer_join(subscription_group_member.inner_join(channel::table))
         .filter(account_id.eq(account_id_))
-        .select((SubscriptionGroup::as_select(), Channel::as_select()))
-        .order_by(subscription_group_id)
+        .select((
+            SubscriptionGroup::as_select(),
+            Option::<Channel>::as_select(),
+        ))
+        .order_by(id)
         .load(conn)
         .await?;
 
@@ -29,7 +34,7 @@ pub async fn get_subscription_groups_by_account_id(
         (
             group.clone(),
             subscribed
-                .map(|(_group, channel)| channel.clone())
+                .flat_map(|(_group, channel)| channel.clone())
                 .collect(),
         )
     });
