@@ -138,3 +138,30 @@ pub async fn remove_channel_from_subscription_group(
 
     Ok(())
 }
+
+pub async fn remove_channel_from_all_subscription_groups(
+    conn: &mut DbConnection,
+    account_id_: &str,
+    channel_id_: &str,
+) -> Result<(), DbError> {
+    // this doesn't seem to be possible in a single statement yet, because joins don't work yet in delete statements, see https://github.com/diesel-rs/diesel/issues/1478
+    // - We first search for all subscription group members that are linked to the user account and refer to the provided channel id
+    // - In the second step, we delete all the ones we found in the first step
+    let groups_to_remove_from = subscription_group_member
+        .inner_join(subscription_group)
+        .filter(channel_id.eq(channel_id_).and(account_id.eq(account_id_)))
+        .select(subscription_group_id)
+        .load::<String>(conn)
+        .await?;
+
+    diesel::delete(subscription_group_member)
+        .filter(
+            subscription_group_id
+                .eq_any(groups_to_remove_from)
+                .and(channel_id.eq(channel_id_)),
+        )
+        .execute(conn)
+        .await?;
+
+    Ok(())
+}

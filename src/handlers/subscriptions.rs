@@ -15,7 +15,8 @@ use crate::{
             add_channel_to_subscription_group, create_new_subscription_group,
             delete_subscription_group_by_id, get_subscription_group_by_id,
             get_subscription_group_channels_by_id, get_subscription_groups_by_account_id,
-            remove_channel_from_subscription_group, update_existing_subscription_group,
+            remove_channel_from_all_subscription_groups, remove_channel_from_subscription_group,
+            update_existing_subscription_group,
         },
     },
     dto::ExtendedSubscriptionGroup,
@@ -112,10 +113,17 @@ async fn unsubscribe(
 ) -> actix_web::Result<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
-    match remove_subscription_by_account_id(&mut conn, &channel_id, &account.id).await {
-        Ok(_) => Ok(HttpResponse::Ok()),
-        Err(err) => Err(error::ErrorInternalServerError(err)),
-    }
+    remove_subscription_by_account_id(&mut conn, &channel_id, &account.id)
+        .await
+        .map_err(error::ErrorInternalServerError)?;
+
+    // now that the user no longer subscribed to the channel, the channel may also no
+    // longer be part of any subscription groups, so we auto-wipe it from all groups
+    remove_channel_from_all_subscription_groups(&mut conn, &channel_id, &account.id)
+        .await
+        .map_err(error::ErrorInternalServerError)?;
+
+    Ok(HttpResponse::Ok())
 }
 
 /* Routes under the /groups prefix */
@@ -253,10 +261,17 @@ async fn add_to_subscription_group(
 
     verify_is_subscription_group_owner(&mut conn, &subscription_group_id, &account.id).await?;
 
-    validate_channel_information_if_changed(&mut conn, &channel).await?;
-    create_or_update_channel(&mut conn, &channel)
+    let subscription = get_subscription_channel_by_account_id(&mut conn, &account.id, &channel.id)
         .await
         .map_err(error::ErrorInternalServerError)?;
+    if subscription.is_none() {
+        return Err(error::ErrorBadRequest(
+            "channel has to be subscribed to before it can be added to a channel group",
+        ));
+    }
+
+    // we don't have to update the channel information in the database because we can assume that it's already
+    // up to date, given that the user already subscribed to that channel
 
     add_channel_to_subscription_group(&mut conn, &subscription_group_id, &channel.id)
         .await
