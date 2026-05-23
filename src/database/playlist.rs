@@ -148,7 +148,7 @@ pub async fn get_playlist_by_id_with_videos(
     let videos = playlist_video_member
         .filter(
             playlist_id
-                .eq(playlist_id)
+                .eq(playlist_id_)
                 .and(playlist_video_member_account_id.eq(account_id_)),
         )
         .inner_join(video::table.inner_join(channel::table))
