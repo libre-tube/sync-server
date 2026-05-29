@@ -45,7 +45,7 @@ async fn get_playlist_bookmarks(account: Account, pool: WebData) -> HandlerResul
 
     let playlists = get_playlist_bookmarks_by_account_id(&mut conn, &account.id)
         .await
-        .map_err(|_| HandlerError::InternalServerError)?;
+        .map_err(|_| HandlerError::InternalDatabaseError)?;
 
     let playlists: Vec<_> = playlists
         .iter()
@@ -67,7 +67,7 @@ async fn get_playlist_bookmark(
     let Some((playlist, channel)) =
         get_playlist_bookmark_by_id(&mut conn, &playlist_id, &account.id)
             .await
-            .map_err(|_| HandlerError::InternalServerError)?
+            .map_err(|_| HandlerError::InternalDatabaseError)?
     else {
         return Err(HandlerError::BookmarkNotExists);
     };
@@ -90,7 +90,7 @@ async fn create_playlist_bookmark(
 
     create_or_update_channel(&mut conn, &playlist.uploader)
         .await
-        .map_err(|_| HandlerError::InternalServerError)?;
+        .map_err(|_| HandlerError::InternalDatabaseError)?;
 
     create_or_update_public_playlist(
         &mut conn,
@@ -100,10 +100,10 @@ async fn create_playlist_bookmark(
             .into_public_playlist(&playlist.uploader.id),
     )
     .await
-    .map_err(|_| HandlerError::InternalServerError)?;
+    .map_err(|_| HandlerError::InternalDatabaseError)?;
     create_playlist_bookmark_by_playlist_id(&mut conn, &playlist.playlist.id, &account.id)
         .await
-        .map_err(|_| HandlerError::InternalServerError)?;
+        .map_err(|_| HandlerError::InternalDatabaseError)?;
 
     Ok(HttpResponse::Ok().json(playlist))
 }
@@ -119,7 +119,7 @@ async fn delete_playlist_bookmark(
 
     delete_playlist_bookmark_by_playlist_id(&mut conn, &playlist_id, &account.id)
         .await
-        .map_err(|_| HandlerError::InternalServerError)?;
+        .map_err(|_| HandlerError::InternalDatabaseError)?;
 
     Ok(HttpResponse::Ok())
 }

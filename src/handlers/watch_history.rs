@@ -90,7 +90,7 @@ async fn get_watch_history(
                 .collect::<Vec<_>>();
             Ok(HttpResponse::Ok().json(history))
         }
-        Err(err) => Err(HandlerError::InternalServerErrorWithContext(
+        Err(err) => Err(HandlerError::InternalDatabaseErrorWithContext(
             err.to_string(),
         )),
     }
@@ -107,7 +107,7 @@ async fn get_from_watch_history(
 
     match get_watch_history_entry(&mut conn, &account.id, &video_id)
         .await
-        .map_err(|_| HandlerError::InternalServerError)?
+        .map_err(|_| HandlerError::InternalDatabaseError)?
     {
         Some((metadata, video, channel)) => Ok(HttpResponse::Ok().json(ExtendedWatchHistoryItem {
             video: CreateVideo::from((&video, &channel)),
@@ -130,22 +130,20 @@ async fn add_to_watch_history(
     watch_history_item.metadata.account_id = account.id;
     watch_history_item.metadata.video_id = watch_history_item.video.id.clone();
 
-    validate_video_information_if_changed_single(&mut conn, &mut watch_history_item.video)
-        .await
-        .map_err(|_| HandlerError::BadRequest)?;
+    validate_video_information_if_changed_single(&mut conn, &mut watch_history_item.video).await?;
 
     // store video metadata in database
     create_or_update_channel(&mut conn, &watch_history_item.video.uploader)
         .await
-        .map_err(|_| HandlerError::InternalServerError)?;
+        .map_err(|_| HandlerError::InternalDatabaseError)?;
     create_or_update_video(&mut conn, &(&watch_history_item.video).into())
         .await
-        .map_err(|_| HandlerError::InternalServerError)?;
+        .map_err(|_| HandlerError::InternalDatabaseError)?;
 
     // create actual watch history entry
     add_or_update_video_to_watch_history(&mut conn, &watch_history_item.metadata)
         .await
-        .map_err(|_| HandlerError::InternalServerError)?;
+        .map_err(|_| HandlerError::InternalDatabaseError)?;
 
     Ok(HttpResponse::Ok().json(watch_history_item))
 }
@@ -166,7 +164,7 @@ async fn update_watch_history_video_state(
 
     add_or_update_video_to_watch_history(&mut conn, &watch_history_item)
         .await
-        .map_err(|_| HandlerError::InternalServerError)?;
+        .map_err(|_| HandlerError::InternalDatabaseError)?;
 
     Ok(HttpResponse::Ok().json(watch_history_item))
 }
@@ -178,7 +176,7 @@ async fn clear_watch_history(account: Account, pool: WebData) -> HandlerResult<i
 
     match clear_watch_history_by_account_id(&mut conn, &account.id).await {
         Ok(()) => Ok(HttpResponse::Ok()),
-        Err(err) => Err(HandlerError::InternalServerErrorWithContext(
+        Err(err) => Err(HandlerError::InternalDatabaseErrorWithContext(
             err.to_string(),
         )),
     }
@@ -195,7 +193,7 @@ async fn remove_from_watch_history(
 
     match remove_video_from_watch_history(&mut conn, &account.id, &video_id).await {
         Ok(()) => Ok(HttpResponse::Ok()),
-        Err(err) => Err(HandlerError::InternalServerErrorWithContext(
+        Err(err) => Err(HandlerError::InternalDatabaseErrorWithContext(
             err.to_string(),
         )),
     }

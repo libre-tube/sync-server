@@ -37,23 +37,27 @@ pub enum HandlerError {
     #[error("channel has to be subscribed to before it can be added to a channel group")]
     SubscribeBeforeChannelGroup,
     #[error("registration is disabled on this server")]
-    RegistrationIsDisabled,
+    RegistrationDisabled,
     #[error("password too short (8 chars min)")]
     PasswordTooShort,
     #[error("accountname already taken")]
-    AccountnameTaken,
+    AccountNameTaken,
     #[error("invalid accountname or password")]
     InvalidCredentials,
     #[error("invalid or missing authentication token")]
     InvalidToken,
     #[error("video not in watch history")]
     NotInWatchHistory,
-    #[error("internal server error")]
-    InternalServerError,
-    #[error("{0}")]
-    InternalServerErrorWithContext(String),
-    #[error("bad request")]
-    BadRequest,
+    #[error("internal database error")]
+    InternalDatabaseError,
+    #[error("internal database error: {0}")]
+    InternalDatabaseErrorWithContext(String),
+    #[error("provided metadata seems to be wrong")]
+    ValidationError,
+    #[error("provided metadata seems to be wrong: {0}")]
+    ValidationErrorWithContext(String),
+    #[error("failed to load data from YouTube")]
+    YouTubeConnectError,
 }
 
 impl ResponseError for HandlerError {
@@ -66,16 +70,18 @@ impl ResponseError for HandlerError {
             Self::NotSubscribed => StatusCode::BAD_REQUEST,
             Self::SubscriptionGroupNotFound => StatusCode::NOT_FOUND,
             Self::SubscribeBeforeChannelGroup => StatusCode::BAD_REQUEST,
-            Self::RegistrationIsDisabled => StatusCode::METHOD_NOT_ALLOWED,
+            Self::RegistrationDisabled => StatusCode::METHOD_NOT_ALLOWED,
             Self::PasswordTooShort => StatusCode::BAD_REQUEST,
-            Self::AccountnameTaken => StatusCode::CONFLICT,
+            Self::AccountNameTaken => StatusCode::CONFLICT,
             Self::AccountNotExists => StatusCode::NOT_FOUND,
             Self::InvalidCredentials => StatusCode::FORBIDDEN,
             Self::InvalidToken => StatusCode::UNAUTHORIZED,
             Self::NotInWatchHistory => StatusCode::NOT_FOUND,
-            Self::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::InternalServerErrorWithContext(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::BadRequest => StatusCode::BAD_REQUEST,
+            Self::InternalDatabaseError => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::InternalDatabaseErrorWithContext(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::ValidationError => StatusCode::BAD_REQUEST,
+            Self::ValidationErrorWithContext(_) => StatusCode::BAD_REQUEST,
+            Self::YouTubeConnectError => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }

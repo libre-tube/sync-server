@@ -100,10 +100,10 @@ pub async fn validate_channel_information_if_changed(
 
     let rss_channel = RssChannel::fetch_from_channel_id(&channel.id)
         .await
-        .map_err(|_| HandlerError::InternalServerError)?;
+        .map_err(|_| HandlerError::YouTubeConnectError)?;
 
     validate_channel_information(channel.clone(), &rss_channel)
-        .map_err(|_| HandlerError::BadRequest)?;
+        .map_err(|_| HandlerError::ValidationError)?;
 
     Ok(())
 }
@@ -150,7 +150,7 @@ pub async fn validate_video_information_if_changed(
 
     for video in video_datas.iter() {
         if video.uploader != *channel {
-            return Err(HandlerError::InternalServerErrorWithContext(
+            return Err(HandlerError::ValidationErrorWithContext(
                 "can only process videos from the same channel".to_string(),
             ));
         }
@@ -158,9 +158,9 @@ pub async fn validate_video_information_if_changed(
 
     let channel_rss = RssChannel::fetch_from_channel_id(&channel.id)
         .await
-        .map_err(|_| HandlerError::InternalServerError)?;
+        .map_err(|_| HandlerError::YouTubeConnectError)?;
     (*channel) = validate_channel_information(channel.clone(), &channel_rss)
-        .map_err(|_| HandlerError::BadRequest)?;
+        .map_err(|_| HandlerError::ValidationError)?;
 
     for video_data in video_datas.iter_mut() {
         // verification is only required if the channel doesn't exist yet or has changed since then
@@ -173,7 +173,7 @@ pub async fn validate_video_information_if_changed(
         }
 
         (*video_data) = validate_video_information(video_data.clone(), &channel_rss)
-            .map_err(|_| HandlerError::BadRequest)?;
+            .map_err(|_| HandlerError::ValidationError)?;
     }
 
     Ok(())
@@ -223,12 +223,12 @@ pub async fn validate_public_playlist_information_if_changed(
 
     let rss_playlist = RssPlaylist::fetch_from_playlist_id(&playlist.playlist.id)
         .await
-        .map_err(|_| HandlerError::InternalServerError)?;
+        .map_err(|_| HandlerError::YouTubeConnectError)?;
 
     let mut uploader = playlist.uploader.clone();
     if is_channel_validation_required(conn, &uploader).await {
         uploader = validate_channel_information(uploader, &rss_playlist.to_channel())
-            .map_err(|_| HandlerError::BadRequest)?;
+            .map_err(|_| HandlerError::ValidationError)?;
     }
 
     // verification is only required if the channel doesn't exist yet or has changed since then
@@ -242,7 +242,7 @@ pub async fn validate_public_playlist_information_if_changed(
     }
 
     let validated_playlist = validate_playlist_information(playlist.playlist, &rss_playlist)
-        .map_err(|_| HandlerError::BadRequest)?;
+        .map_err(|_| HandlerError::ValidationError)?;
 
     Ok(ExtendedPublicPlaylist {
         playlist: validated_playlist,

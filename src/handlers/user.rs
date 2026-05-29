@@ -48,7 +48,7 @@ async fn register_account(
     form: web::Json<dto::RegisterUser>,
 ) -> HandlerResult<impl Responder> {
     if !CONFIG.allow_registration {
-        return Err(HandlerError::RegistrationIsDisabled);
+        return Err(HandlerError::RegistrationDisabled);
     }
 
     let mut conn = get_db_conn!(pool);
@@ -68,9 +68,9 @@ async fn register_account(
         .await
         .map_err(|err| match err {
             diesel::result::Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                HandlerError::AccountnameTaken
+                HandlerError::AccountNameTaken
             }
-            _ => HandlerError::InternalServerErrorWithContext(err.to_string()),
+            _ => HandlerError::InternalDatabaseErrorWithContext(err.to_string()),
         })?;
 
     match generate_jwt(&account, CONFIG.secret.as_bytes()) {
@@ -78,7 +78,7 @@ async fn register_account(
             let resp = LoginResponse { jwt };
             Ok(HttpResponse::Created().json(resp))
         }
-        Err(err) => Err(HandlerError::InternalServerErrorWithContext(
+        Err(err) => Err(HandlerError::InternalDatabaseErrorWithContext(
             err.to_string(),
         )),
     }
@@ -110,7 +110,7 @@ async fn login_account(
             let resp = LoginResponse { jwt };
             Ok(HttpResponse::Ok().json(resp))
         }
-        Err(err) => Err(HandlerError::InternalServerErrorWithContext(
+        Err(err) => Err(HandlerError::InternalDatabaseErrorWithContext(
             err.to_string(),
         )),
     }
@@ -131,7 +131,7 @@ async fn delete_account(
 
     match delete_existing_account(&mut conn, &account.id).await {
         Ok(_) => Ok(HttpResponse::Ok()),
-        Err(err) => Err(HandlerError::InternalServerErrorWithContext(
+        Err(err) => Err(HandlerError::InternalDatabaseErrorWithContext(
             err.to_string(),
         )),
     }
