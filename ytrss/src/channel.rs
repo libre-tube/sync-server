@@ -29,7 +29,7 @@ impl RssChannel {
             .await
             .map_err(|_err| YouTubeError::ConnectionError)?;
 
-        serde_roxmltree::from_str(&response_body).map_err(|e| YouTubeError::ParserError(e))
+        serde_roxmltree::from_str(&response_body).map_err(YouTubeError::ParserError)
     }
 
     pub fn name(&self) -> &str {

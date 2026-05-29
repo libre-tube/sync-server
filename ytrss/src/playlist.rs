@@ -27,7 +27,7 @@ impl RssPlaylist {
             .await
             .map_err(|_err| YouTubeError::ConnectionError)?;
 
-        serde_roxmltree::from_str(&response_body).map_err(|e| YouTubeError::ParserError(e))
+        serde_roxmltree::from_str(&response_body).map_err(YouTubeError::ParserError)
     }
 
     pub fn video_count(&self) -> usize {
