@@ -1,6 +1,4 @@
-use actix_web::{
-    HttpResponse, Responder, delete, error, get, middleware::from_fn, patch, post, web,
-};
+use actix_web::{HttpResponse, Responder, delete, get, middleware::from_fn, patch, post, web};
 use itertools::Itertools;
 use utoipa_actix_web::scope;
 
@@ -16,7 +14,7 @@ use crate::{
     },
     dto::{CreatePlaylist, CreateVideo, ExtendedPlaylist, PlaylistResponse},
     get_db_conn,
-    handlers::{HandlerError, ScopedHandler, user::auth_middleware},
+    handlers::{HandlerError, HandlerResult, ScopedHandler, user::auth_middleware},
     models::{Account, Playlist},
     validation::validate_video_information_if_changed,
 };
@@ -50,18 +48,18 @@ async fn get_playlist(
     account: Account,
     pool: WebData,
     playlist_id: web::Path<String>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     let Some((playlist, videos)) =
         get_playlist_by_id_with_videos(&mut conn, &playlist_id, &account.id)
             .await
-            .map_err(error::ErrorInternalServerError)?
+            .map_err(|_| HandlerError::InternalServerError)?
     else {
-        return Err(HandlerError::PlaylistNotExists.into());
+        return Err(HandlerError::PlaylistNotExists);
     };
     if playlist.account_id != account.id {
-        return Err(HandlerError::PlaylistNotOwned.into());
+        return Err(HandlerError::PlaylistNotOwned);
     }
 
     let videos: Vec<_> = videos
@@ -77,12 +75,12 @@ async fn get_playlist(
 
 #[utoipa::path(responses((status = OK, body = Vec<ExtendedPlaylist>)), security(("api_jwt_token" = [])))]
 #[get("/")]
-async fn get_playlists(account: Account, pool: WebData) -> actix_web::Result<impl Responder> {
+async fn get_playlists(account: Account, pool: WebData) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     let playlists = get_playlists_by_account_id(&mut conn, &account.id)
         .await
-        .map_err(error::ErrorInternalServerError)?;
+        .map_err(|_| HandlerError::InternalServerError)?;
 
     let mut extended_playlists: Vec<ExtendedPlaylist> = vec![];
     for playlist in &playlists {
@@ -102,7 +100,7 @@ async fn create_playlist(
     account: Account,
     pool: WebData,
     playlist_data: web::Json<CreatePlaylist>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     if let Some(ref id) = playlist_data.id
@@ -110,7 +108,7 @@ async fn create_playlist(
             .await
             .is_ok()
     {
-        return Err(HandlerError::PlaylistExists.into());
+        return Err(HandlerError::PlaylistExists);
     }
 
     let playlist = Playlist {
@@ -126,7 +124,9 @@ async fn create_playlist(
             let extended_playlist = ExtendedPlaylist::from_playlist(&playlist, 0);
             Ok(HttpResponse::Created().json(extended_playlist))
         }
-        Err(err) => Err(error::ErrorInternalServerError(err)),
+        Err(err) => Err(HandlerError::InternalServerErrorWithContext(
+            err.to_string(),
+        )),
     }
 }
 
@@ -135,11 +135,11 @@ async fn get_owned_playlist_or_error(
     conn: &mut DbConnection,
     playlist_id: &str,
     account_id: &str,
-) -> actix_web::Result<Playlist> {
+) -> HandlerResult<Playlist> {
     get_playlist_by_id(conn, playlist_id, account_id)
         .await
-        .map_err(error::ErrorInternalServerError)?
-        .ok_or_else(|| HandlerError::PlaylistNotExists.into())
+        .map_err(|_| HandlerError::InternalServerError)?
+        .ok_or(HandlerError::PlaylistNotExists)
 }
 
 #[utoipa::path(responses((status = OK, body = Playlist)), security(("api_jwt_token" = [])))]
@@ -149,7 +149,7 @@ async fn update_playlist(
     pool: WebData,
     playlist_id: web::Path<String>,
     playlist_data: web::Json<CreatePlaylist>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     get_owned_playlist_or_error(&mut conn, &playlist_id, &account.id).await?;
@@ -170,7 +170,9 @@ async fn update_playlist(
             let extended_playlist = ExtendedPlaylist::from_playlist(&playlist, video_count as u64);
             Ok(HttpResponse::Ok().json(extended_playlist))
         }
-        Err(err) => Err(error::ErrorInternalServerError(err)),
+        Err(err) => Err(HandlerError::InternalServerErrorWithContext(
+            err.to_string(),
+        )),
     }
 }
 
@@ -180,14 +182,16 @@ async fn delete_playlist(
     account: Account,
     pool: WebData,
     playlist_id: web::Path<String>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     get_owned_playlist_or_error(&mut conn, &playlist_id, &account.id).await?;
 
     match delete_playlist_by_id(&mut conn, &playlist_id, &account.id).await {
         Ok(()) => Ok(HttpResponse::Ok().json(())),
-        Err(err) => Err(error::ErrorInternalServerError(err)),
+        Err(err) => Err(HandlerError::InternalServerErrorWithContext(
+            err.to_string(),
+        )),
     }
 }
 
@@ -198,7 +202,7 @@ async fn add_to_playlist(
     pool: WebData,
     playlist_id: web::Path<String>,
     video_datas: web::Json<Vec<CreateVideo>>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     get_owned_playlist_or_error(&mut conn, &playlist_id, &account.id).await?;
@@ -217,12 +221,12 @@ async fn add_to_playlist(
         // store channel information first before storing video to ensure data integrity
         create_or_update_channel(&mut conn, &channel)
             .await
-            .map_err(error::ErrorInternalServerError)?;
+            .map_err(|_| HandlerError::InternalServerError)?;
 
         for video in videos {
             add_video_to_playlist(&mut conn, &playlist_id, &account.id, &(&video).into())
                 .await
-                .map_err(error::ErrorInternalServerError)?;
+                .map_err(|_| HandlerError::InternalServerError)?;
         }
     }
 
@@ -235,7 +239,7 @@ async fn remove_from_playlist(
     account: Account,
     pool: WebData,
     path: web::Path<(String, String)>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     let (playlist_id, video_id) = path.into_inner();
@@ -244,6 +248,8 @@ async fn remove_from_playlist(
 
     match remove_video_from_playlist(&mut conn, &playlist_id, &account.id, &video_id).await {
         Ok(()) => Ok(HttpResponse::Ok()),
-        Err(err) => Err(error::ErrorInternalServerError(err)),
+        Err(err) => Err(HandlerError::InternalServerErrorWithContext(
+            err.to_string(),
+        )),
     }
 }

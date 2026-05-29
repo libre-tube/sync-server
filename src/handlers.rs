@@ -4,7 +4,8 @@ use actix_web::{
     FromRequest, HttpMessage, HttpRequest,
     body::MessageBody,
     dev::{ServiceFactory, ServiceRequest, ServiceResponse},
-    error,
+    error::ResponseError,
+    http::StatusCode,
 };
 use utoipa_actix_web::scope::Scope;
 
@@ -47,28 +48,39 @@ pub enum HandlerError {
     InvalidToken,
     #[error("video not in watch history")]
     NotInWatchHistory,
+    #[error("internal server error")]
+    InternalServerError,
+    #[error("{0}")]
+    InternalServerErrorWithContext(String),
+    #[error("bad request")]
+    BadRequest,
 }
 
-impl Into<actix_web::Error> for HandlerError {
-    fn into(self) -> actix_web::Error {
+impl ResponseError for HandlerError {
+    fn status_code(&self) -> actix_web::http::StatusCode {
         match self {
-            Self::BookmarkNotExists => error::ErrorNotFound(self),
-            Self::PlaylistNotExists => error::ErrorNotFound(self),
-            Self::PlaylistNotOwned => error::ErrorForbidden(self),
-            Self::PlaylistExists => error::ErrorConflict(self),
-            Self::NotSubscribed => error::ErrorBadRequest(self),
-            Self::SubscriptionGroupNotFound => error::ErrorNotFound(self),
-            Self::SubscribeBeforeChannelGroup => error::ErrorBadRequest(self),
-            Self::RegistrationIsDisabled => error::ErrorMethodNotAllowed(self),
-            Self::PasswordTooShort => error::ErrorBadRequest(self),
-            Self::AccountnameTaken => error::ErrorConflict(self),
-            Self::AccountNotExists => error::ErrorNotFound(self),
-            Self::InvalidCredentials => error::ErrorForbidden(self),
-            Self::InvalidToken => error::ErrorUnauthorized(self),
-            Self::NotInWatchHistory => error::ErrorNotFound(self),
+            Self::BookmarkNotExists => StatusCode::NOT_FOUND,
+            Self::PlaylistNotExists => StatusCode::NOT_FOUND,
+            Self::PlaylistNotOwned => StatusCode::FORBIDDEN,
+            Self::PlaylistExists => StatusCode::CONFLICT,
+            Self::NotSubscribed => StatusCode::BAD_REQUEST,
+            Self::SubscriptionGroupNotFound => StatusCode::NOT_FOUND,
+            Self::SubscribeBeforeChannelGroup => StatusCode::BAD_REQUEST,
+            Self::RegistrationIsDisabled => StatusCode::METHOD_NOT_ALLOWED,
+            Self::PasswordTooShort => StatusCode::BAD_REQUEST,
+            Self::AccountnameTaken => StatusCode::CONFLICT,
+            Self::AccountNotExists => StatusCode::NOT_FOUND,
+            Self::InvalidCredentials => StatusCode::FORBIDDEN,
+            Self::InvalidToken => StatusCode::UNAUTHORIZED,
+            Self::NotInWatchHistory => StatusCode::NOT_FOUND,
+            Self::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::InternalServerErrorWithContext(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::BadRequest => StatusCode::BAD_REQUEST,
         }
     }
 }
+
+pub type HandlerResult<T> = Result<T, HandlerError>;
 
 // https://github.com/actix/actix-web/discussions/3074
 pub trait ScopedHandler {

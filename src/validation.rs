@@ -2,7 +2,7 @@
 
 use std::{cmp::max, str::FromStr};
 
-use actix_web::{error, http::Uri};
+use actix_web::http::Uri;
 use itertools::Itertools;
 
 use crate::{
@@ -12,6 +12,7 @@ use crate::{
         video::get_video_by_id,
     },
     dto::{CreateVideo, ExtendedPlaylist, ExtendedPublicPlaylist},
+    handlers::{HandlerError, HandlerResult},
     models::{Channel, Video},
 };
 
@@ -92,16 +93,17 @@ async fn is_channel_validation_required(conn: &mut DbConnection, channel: &Chann
 pub async fn validate_channel_information_if_changed(
     conn: &mut DbConnection,
     channel: &mut Channel,
-) -> actix_web::Result<()> {
+) -> HandlerResult<()> {
     if !is_channel_validation_required(conn, channel).await {
         return Ok(());
     }
 
     let rss_channel = RssChannel::fetch_from_channel_id(&channel.id)
         .await
-        .map_err(error::ErrorInternalServerError)?;
+        .map_err(|_| HandlerError::InternalServerError)?;
 
-    validate_channel_information(channel.clone(), &rss_channel).map_err(error::ErrorBadRequest)?;
+    validate_channel_information(channel.clone(), &rss_channel)
+        .map_err(|_| HandlerError::BadRequest)?;
 
     Ok(())
 }
@@ -128,7 +130,7 @@ fn validate_channel_information(
 pub async fn validate_video_information_if_changed_single(
     conn: &mut DbConnection,
     video_data: &mut CreateVideo,
-) -> actix_web::Result<()> {
+) -> HandlerResult<()> {
     let mut video_datas = vec![video_data.clone()];
     validate_video_information_if_changed(conn, &mut video_datas, &mut video_data.uploader).await?;
     (*video_data) = video_datas[0].clone();
@@ -141,24 +143,24 @@ pub async fn validate_video_information_if_changed(
     conn: &mut DbConnection,
     video_datas: &mut [CreateVideo],
     channel: &mut Channel,
-) -> actix_web::Result<()> {
+) -> HandlerResult<()> {
     if !CONFIG.validate_submitted_metadata {
         return Ok(());
     }
 
     for video in video_datas.iter() {
         if video.uploader != *channel {
-            return Err(error::ErrorInternalServerError(
-                "can only process videos from the same channel",
+            return Err(HandlerError::InternalServerErrorWithContext(
+                "can only process videos from the same channel".to_string(),
             ));
         }
     }
 
     let channel_rss = RssChannel::fetch_from_channel_id(&channel.id)
         .await
-        .map_err(error::ErrorInternalServerError)?;
+        .map_err(|_| HandlerError::InternalServerError)?;
     (*channel) = validate_channel_information(channel.clone(), &channel_rss)
-        .map_err(error::ErrorBadRequest)?;
+        .map_err(|_| HandlerError::BadRequest)?;
 
     for video_data in video_datas.iter_mut() {
         // verification is only required if the channel doesn't exist yet or has changed since then
@@ -171,7 +173,7 @@ pub async fn validate_video_information_if_changed(
         }
 
         (*video_data) = validate_video_information(video_data.clone(), &channel_rss)
-            .map_err(error::ErrorBadRequest)?;
+            .map_err(|_| HandlerError::BadRequest)?;
     }
 
     Ok(())
@@ -214,19 +216,19 @@ fn validate_video_information(
 pub async fn validate_public_playlist_information_if_changed(
     conn: &mut DbConnection,
     playlist: ExtendedPublicPlaylist,
-) -> actix_web::Result<ExtendedPublicPlaylist> {
+) -> HandlerResult<ExtendedPublicPlaylist> {
     if !CONFIG.validate_submitted_metadata {
         return Ok(playlist);
     }
 
     let rss_playlist = RssPlaylist::fetch_from_playlist_id(&playlist.playlist.id)
         .await
-        .map_err(error::ErrorInternalServerError)?;
+        .map_err(|_| HandlerError::InternalServerError)?;
 
     let mut uploader = playlist.uploader.clone();
     if is_channel_validation_required(conn, &uploader).await {
         uploader = validate_channel_information(uploader, &rss_playlist.to_channel())
-            .map_err(error::ErrorBadRequest)?;
+            .map_err(|_| HandlerError::BadRequest)?;
     }
 
     // verification is only required if the channel doesn't exist yet or has changed since then
@@ -240,7 +242,7 @@ pub async fn validate_public_playlist_information_if_changed(
     }
 
     let validated_playlist = validate_playlist_information(playlist.playlist, &rss_playlist)
-        .map_err(error::ErrorBadRequest)?;
+        .map_err(|_| HandlerError::BadRequest)?;
 
     Ok(ExtendedPublicPlaylist {
         playlist: validated_playlist,

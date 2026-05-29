@@ -1,7 +1,7 @@
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
 use actix_web::middleware::Next;
-use actix_web::{HttpMessage, HttpResponse, Responder, delete, error, post, web};
+use actix_web::{HttpMessage, HttpResponse, Responder, delete, post, web};
 use diesel::result::DatabaseErrorKind;
 use utoipa_actix_web::scope;
 use uuid::Uuid;
@@ -11,7 +11,7 @@ use crate::database::account::{
     delete_existing_account, find_account_by_id, find_account_by_name_hash, insert_new_account,
 };
 use crate::dto::LoginResponse;
-use crate::handlers::{HandlerError, ScopedHandler};
+use crate::handlers::{HandlerError, HandlerResult, ScopedHandler};
 use crate::models::Account;
 use crate::{CONFIG, WebData, dto, get_db_conn, models};
 
@@ -46,16 +46,16 @@ impl ScopedHandler for UserHandler {
 async fn register_account(
     pool: WebData,
     form: web::Json<dto::RegisterUser>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     if !CONFIG.allow_registration {
-        return Err(HandlerError::RegistrationIsDisabled.into());
+        return Err(HandlerError::RegistrationIsDisabled);
     }
 
     let mut conn = get_db_conn!(pool);
 
     let password_length = form.password.len();
     if password_length < MIN_PASSWORD_LENGTH {
-        return Err(HandlerError::PasswordTooShort.into());
+        return Err(HandlerError::PasswordTooShort);
     }
 
     let account = models::Account {
@@ -68,9 +68,9 @@ async fn register_account(
         .await
         .map_err(|err| match err {
             diesel::result::Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                HandlerError::AccountnameTaken.into()
+                HandlerError::AccountnameTaken
             }
-            _ => error::ErrorInternalServerError(err),
+            _ => HandlerError::InternalServerErrorWithContext(err.to_string()),
         })?;
 
     match generate_jwt(&account, CONFIG.secret.as_bytes()) {
@@ -78,7 +78,9 @@ async fn register_account(
             let resp = LoginResponse { jwt };
             Ok(HttpResponse::Created().json(resp))
         }
-        Err(err) => Err(error::ErrorInternalServerError(err)),
+        Err(err) => Err(HandlerError::InternalServerErrorWithContext(
+            err.to_string(),
+        )),
     }
 }
 
@@ -87,7 +89,7 @@ async fn register_account(
 async fn login_account(
     pool: WebData,
     form: web::Json<dto::LoginUser>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     let name = hash_accountname(&form.name, CONFIG.secret.as_bytes());
@@ -96,11 +98,11 @@ async fn login_account(
         .ok()
         .flatten()
     else {
-        return Err(HandlerError::InvalidCredentials.into());
+        return Err(HandlerError::InvalidCredentials);
     };
 
     if !verify_password(&form.password, &account.password_hash) {
-        return Err(HandlerError::InvalidCredentials.into());
+        return Err(HandlerError::InvalidCredentials);
     }
 
     match generate_jwt(&account, CONFIG.secret.as_bytes()) {
@@ -108,7 +110,9 @@ async fn login_account(
             let resp = LoginResponse { jwt };
             Ok(HttpResponse::Ok().json(resp))
         }
-        Err(err) => Err(error::ErrorInternalServerError(err)),
+        Err(err) => Err(HandlerError::InternalServerErrorWithContext(
+            err.to_string(),
+        )),
     }
 }
 
@@ -118,16 +122,18 @@ async fn delete_account(
     account: Account,
     pool: WebData,
     form: web::Json<dto::DeleteUser>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     if !verify_password(&form.password, &account.password_hash) {
-        return Err(HandlerError::InvalidCredentials.into());
+        return Err(HandlerError::InvalidCredentials);
     }
 
     match delete_existing_account(&mut conn, &account.id).await {
         Ok(_) => Ok(HttpResponse::Ok()),
-        Err(err) => Err(error::ErrorInternalServerError(err)),
+        Err(err) => Err(HandlerError::InternalServerErrorWithContext(
+            err.to_string(),
+        )),
     }
 }
 

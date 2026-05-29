@@ -1,6 +1,4 @@
-use actix_web::{
-    HttpResponse, Responder, delete, error, get, middleware::from_fn, patch, put, web,
-};
+use actix_web::{HttpResponse, Responder, delete, get, middleware::from_fn, patch, put, web};
 use serde::Deserialize;
 use utoipa_actix_web::scope;
 
@@ -17,7 +15,7 @@ use crate::{
     },
     dto::{CreateVideo, ExtendedWatchHistoryItem, WatchedState},
     get_db_conn,
-    handlers::{HandlerError, ScopedHandler, user::auth_middleware},
+    handlers::{HandlerError, HandlerResult, ScopedHandler, user::auth_middleware},
     models::{Account, WatchHistoryItem},
     validation::validate_video_information_if_changed_single,
 };
@@ -64,7 +62,7 @@ async fn get_watch_history(
     account: Account,
     pool: WebData,
     params: web::Query<WatchHistoryPaginationRequest>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     let watched_state = params
@@ -92,7 +90,9 @@ async fn get_watch_history(
                 .collect::<Vec<_>>();
             Ok(HttpResponse::Ok().json(history))
         }
-        Err(err) => Err(error::ErrorInternalServerError(err)),
+        Err(err) => Err(HandlerError::InternalServerErrorWithContext(
+            err.to_string(),
+        )),
     }
 }
 
@@ -102,18 +102,18 @@ async fn get_from_watch_history(
     account: Account,
     pool: WebData,
     video_id: web::Path<String>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     match get_watch_history_entry(&mut conn, &account.id, &video_id)
         .await
-        .map_err(error::ErrorInternalServerError)?
+        .map_err(|_| HandlerError::InternalServerError)?
     {
         Some((metadata, video, channel)) => Ok(HttpResponse::Ok().json(ExtendedWatchHistoryItem {
             video: CreateVideo::from((&video, &channel)),
             metadata: metadata.clone(),
         })),
-        None => Err(HandlerError::NotInWatchHistory.into()),
+        None => Err(HandlerError::NotInWatchHistory),
     }
 }
 
@@ -123,7 +123,7 @@ async fn add_to_watch_history(
     account: Account,
     pool: WebData,
     watch_history_item: web::Json<ExtendedWatchHistoryItem>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     let mut watch_history_item = watch_history_item.into_inner();
@@ -132,20 +132,20 @@ async fn add_to_watch_history(
 
     validate_video_information_if_changed_single(&mut conn, &mut watch_history_item.video)
         .await
-        .map_err(error::ErrorBadRequest)?;
+        .map_err(|_| HandlerError::BadRequest)?;
 
     // store video metadata in database
     create_or_update_channel(&mut conn, &watch_history_item.video.uploader)
         .await
-        .map_err(error::ErrorInternalServerError)?;
+        .map_err(|_| HandlerError::InternalServerError)?;
     create_or_update_video(&mut conn, &(&watch_history_item.video).into())
         .await
-        .map_err(error::ErrorInternalServerError)?;
+        .map_err(|_| HandlerError::InternalServerError)?;
 
     // create actual watch history entry
     add_or_update_video_to_watch_history(&mut conn, &watch_history_item.metadata)
         .await
-        .map_err(error::ErrorInternalServerError)?;
+        .map_err(|_| HandlerError::InternalServerError)?;
 
     Ok(HttpResponse::Ok().json(watch_history_item))
 }
@@ -157,7 +157,7 @@ async fn update_watch_history_video_state(
     pool: WebData,
     watch_history_item: web::Json<WatchHistoryItem>,
     video_id: web::Path<String>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     let mut watch_history_item = watch_history_item.into_inner();
@@ -166,19 +166,21 @@ async fn update_watch_history_video_state(
 
     add_or_update_video_to_watch_history(&mut conn, &watch_history_item)
         .await
-        .map_err(error::ErrorInternalServerError)?;
+        .map_err(|_| HandlerError::InternalServerError)?;
 
     Ok(HttpResponse::Ok().json(watch_history_item))
 }
 
 #[utoipa::path(responses((status = OK)), security(("api_jwt_token" = [])))]
 #[delete("/")]
-async fn clear_watch_history(account: Account, pool: WebData) -> actix_web::Result<impl Responder> {
+async fn clear_watch_history(account: Account, pool: WebData) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     match clear_watch_history_by_account_id(&mut conn, &account.id).await {
         Ok(()) => Ok(HttpResponse::Ok()),
-        Err(err) => Err(error::ErrorInternalServerError(err)),
+        Err(err) => Err(HandlerError::InternalServerErrorWithContext(
+            err.to_string(),
+        )),
     }
 }
 
@@ -188,11 +190,13 @@ async fn remove_from_watch_history(
     account: Account,
     pool: WebData,
     video_id: web::Path<String>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     match remove_video_from_watch_history(&mut conn, &account.id, &video_id).await {
         Ok(()) => Ok(HttpResponse::Ok()),
-        Err(err) => Err(error::ErrorInternalServerError(err)),
+        Err(err) => Err(HandlerError::InternalServerErrorWithContext(
+            err.to_string(),
+        )),
     }
 }

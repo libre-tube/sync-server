@@ -1,4 +1,4 @@
-use actix_web::{HttpResponse, Responder, delete, error, get, middleware::from_fn, post, web};
+use actix_web::{HttpResponse, Responder, delete, get, middleware::from_fn, post, web};
 use utoipa_actix_web::scope;
 
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
     },
     dto::ExtendedPublicPlaylist,
     get_db_conn,
-    handlers::{HandlerError, ScopedHandler, user::auth_middleware},
+    handlers::{HandlerError, HandlerResult, ScopedHandler, user::auth_middleware},
     models::Account,
     validation::validate_public_playlist_information_if_changed,
 };
@@ -40,15 +40,12 @@ impl ScopedHandler for PlaylistBookmarksHandler {
 
 #[utoipa::path(responses((status = OK, body = Vec<ExtendedPublicPlaylist>)), security(("api_jwt_token" = [])))]
 #[get("/")]
-async fn get_playlist_bookmarks(
-    account: Account,
-    pool: WebData,
-) -> actix_web::Result<impl Responder> {
+async fn get_playlist_bookmarks(account: Account, pool: WebData) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     let playlists = get_playlist_bookmarks_by_account_id(&mut conn, &account.id)
         .await
-        .map_err(error::ErrorInternalServerError)?;
+        .map_err(|_| HandlerError::InternalServerError)?;
 
     let playlists: Vec<_> = playlists
         .iter()
@@ -64,15 +61,15 @@ async fn get_playlist_bookmark(
     account: Account,
     pool: WebData,
     playlist_id: web::Path<String>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     let Some((playlist, channel)) =
         get_playlist_bookmark_by_id(&mut conn, &playlist_id, &account.id)
             .await
-            .map_err(error::ErrorInternalServerError)?
+            .map_err(|_| HandlerError::InternalServerError)?
     else {
-        return Err(HandlerError::BookmarkNotExists.into());
+        return Err(HandlerError::BookmarkNotExists);
     };
 
     let extended_playlist = ExtendedPublicPlaylist::from_public_playlist(&playlist, &channel);
@@ -85,7 +82,7 @@ async fn create_playlist_bookmark(
     account: Account,
     pool: WebData,
     playlist: web::Json<ExtendedPublicPlaylist>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     let playlist =
@@ -93,7 +90,7 @@ async fn create_playlist_bookmark(
 
     create_or_update_channel(&mut conn, &playlist.uploader)
         .await
-        .map_err(error::ErrorInternalServerError)?;
+        .map_err(|_| HandlerError::InternalServerError)?;
 
     create_or_update_public_playlist(
         &mut conn,
@@ -103,10 +100,10 @@ async fn create_playlist_bookmark(
             .into_public_playlist(&playlist.uploader.id),
     )
     .await
-    .map_err(error::ErrorInternalServerError)?;
+    .map_err(|_| HandlerError::InternalServerError)?;
     create_playlist_bookmark_by_playlist_id(&mut conn, &playlist.playlist.id, &account.id)
         .await
-        .map_err(error::ErrorInternalServerError)?;
+        .map_err(|_| HandlerError::InternalServerError)?;
 
     Ok(HttpResponse::Ok().json(playlist))
 }
@@ -117,12 +114,12 @@ async fn delete_playlist_bookmark(
     account: Account,
     pool: WebData,
     playlist_id: web::Path<String>,
-) -> actix_web::Result<impl Responder> {
+) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
     delete_playlist_bookmark_by_playlist_id(&mut conn, &playlist_id, &account.id)
         .await
-        .map_err(error::ErrorInternalServerError)?;
+        .map_err(|_| HandlerError::InternalServerError)?;
 
     Ok(HttpResponse::Ok())
 }
