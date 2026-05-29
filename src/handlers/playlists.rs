@@ -16,7 +16,7 @@ use crate::{
     },
     dto::{CreatePlaylist, CreateVideo, ExtendedPlaylist, PlaylistResponse},
     get_db_conn,
-    handlers::{ScopedHandler, user::auth_middleware},
+    handlers::{HandlerError, ScopedHandler, user::auth_middleware},
     models::{Account, Playlist},
     validation::validate_video_information_if_changed,
 };
@@ -58,10 +58,10 @@ async fn get_playlist(
             .await
             .map_err(error::ErrorInternalServerError)?
     else {
-        return Err(error::ErrorNotFound("playlist does not exist"));
+        return Err(HandlerError::PlaylistNotExists.into());
     };
     if playlist.account_id != account.id {
-        return Err(error::ErrorForbidden("not the owner of the playlist"));
+        return Err(HandlerError::PlaylistNotOwned.into());
     }
 
     let videos: Vec<_> = videos
@@ -110,7 +110,7 @@ async fn create_playlist(
             .await
             .is_ok()
     {
-        return Err(error::ErrorConflict("playlist already exists"));
+        return Err(HandlerError::PlaylistExists.into());
     }
 
     let playlist = Playlist {
@@ -139,7 +139,7 @@ async fn get_owned_playlist_or_error(
     get_playlist_by_id(conn, playlist_id, account_id)
         .await
         .map_err(error::ErrorInternalServerError)?
-        .ok_or_else(|| error::ErrorNotFound("playlist doesn't exist"))
+        .ok_or_else(|| HandlerError::PlaylistNotExists.into())
 }
 
 #[utoipa::path(responses((status = OK, body = Playlist)), security(("api_jwt_token" = [])))]

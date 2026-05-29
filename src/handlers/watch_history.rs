@@ -17,7 +17,7 @@ use crate::{
     },
     dto::{CreateVideo, ExtendedWatchHistoryItem, WatchedState},
     get_db_conn,
-    handlers::{ScopedHandler, user::auth_middleware},
+    handlers::{HandlerError, ScopedHandler, user::auth_middleware},
     models::{Account, WatchHistoryItem},
     validation::validate_video_information_if_changed_single,
 };
@@ -113,7 +113,7 @@ async fn get_from_watch_history(
             video: CreateVideo::from((&video, &channel)),
             metadata: metadata.clone(),
         })),
-        None => Err(error::ErrorNotFound("video not in watch history")),
+        None => Err(HandlerError::NotInWatchHistory.into()),
     }
 }
 

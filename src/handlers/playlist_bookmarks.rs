@@ -13,7 +13,7 @@ use crate::{
     },
     dto::ExtendedPublicPlaylist,
     get_db_conn,
-    handlers::{ScopedHandler, user::auth_middleware},
+    handlers::{HandlerError, ScopedHandler, user::auth_middleware},
     models::Account,
     validation::validate_public_playlist_information_if_changed,
 };
@@ -72,7 +72,7 @@ async fn get_playlist_bookmark(
             .await
             .map_err(error::ErrorInternalServerError)?
     else {
-        return Err(error::ErrorNotFound("bookmark doesn't exist"));
+        return Err(HandlerError::BookmarkNotExists.into());
     };
 
     let extended_playlist = ExtendedPublicPlaylist::from_public_playlist(&playlist, &channel);

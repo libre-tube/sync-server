@@ -20,7 +20,7 @@ use crate::{
     },
     dto::ExtendedSubscriptionGroup,
     get_db_conn,
-    handlers::{ScopedHandler, user::auth_middleware},
+    handlers::{HandlerError, ScopedHandler, user::auth_middleware},
     models::{Account, Channel, SubscriptionGroup},
     validation::validate_channel_information_if_changed,
 };
@@ -79,7 +79,7 @@ async fn get_subscription(
     match get_subscription_channel_by_account_id(&mut conn, &account.id, &channel_id).await {
         Ok(channel) => match channel {
             Some(channel) => Ok(HttpResponse::Ok().json(channel)),
-            None => Err(error::ErrorNotFound("not subscribed to this channel")),
+            None => Err(HandlerError::NotSubscribed.into()),
         },
         Err(err) => Err(error::ErrorInternalServerError(err)),
     }
@@ -164,9 +164,7 @@ async fn get_subscription_group(
         .await
         .map_err(error::ErrorInternalServerError)?
     else {
-        return Err(error::ErrorNotFound(
-            "subscription group doesn't exist or doesn't belong to this account",
-        ));
+        return Err(HandlerError::SubscriptionGroupNotFound.into());
     };
 
     let channels = get_subscription_group_channels_by_id(&mut conn, &subscription_group_id)
@@ -241,9 +239,7 @@ async fn verify_is_subscription_group_owner(
         .map_err(error::ErrorInternalServerError)?
         .is_none()
     {
-        return Err(error::ErrorNotFound(
-            "either the subscription group doesn't exist or you don't own it",
-        ));
+        return Err(HandlerError::SubscriptionGroupNotFound.into());
     }
 
     Ok(())
@@ -265,9 +261,7 @@ async fn add_to_subscription_group(
         .await
         .map_err(error::ErrorInternalServerError)?;
     if subscription.is_none() {
-        return Err(error::ErrorBadRequest(
-            "channel has to be subscribed to before it can be added to a channel group",
-        ));
+        return Err(HandlerError::SubscribeBeforeChannelGroup.into());
     }
 
     // we don't have to update the channel information in the database because we can assume that it's already

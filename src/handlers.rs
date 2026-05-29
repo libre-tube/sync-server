@@ -4,6 +4,7 @@ use actix_web::{
     FromRequest, HttpMessage, HttpRequest,
     body::MessageBody,
     dev::{ServiceFactory, ServiceRequest, ServiceResponse},
+    error,
 };
 use utoipa_actix_web::scope::Scope;
 
@@ -15,6 +16,59 @@ pub mod playlists;
 pub mod subscriptions;
 pub mod user;
 pub mod watch_history;
+
+#[derive(thiserror::Error, Debug)]
+pub enum HandlerError {
+    #[error("bookmark doesn't exists")]
+    BookmarkNotExists,
+    #[error("playlist doesn't exists")]
+    PlaylistNotExists,
+    #[error("account doesn't exists")]
+    AccountNotExists,
+    #[error("not the owner of the playlist")]
+    PlaylistNotOwned,
+    #[error("playlist already exists")]
+    PlaylistExists,
+    #[error("not subscribed to this channel")]
+    NotSubscribed,
+    #[error("subscription group doesn't exist or doesn't belong to this account")]
+    SubscriptionGroupNotFound,
+    #[error("channel has to be subscribed to before it can be added to a channel group")]
+    SubscribeBeforeChannelGroup,
+    #[error("registration is disabled on this server")]
+    RegistrationIsDisabled,
+    #[error("password too short (8 chars min)")]
+    PasswordTooShort,
+    #[error("accountname already taken")]
+    AccountnameTaken,
+    #[error("invalid accountname or password")]
+    InvalidCredentials,
+    #[error("invalid or missing authentication token")]
+    InvalidToken,
+    #[error("video not in watch history")]
+    NotInWatchHistory,
+}
+
+impl Into<actix_web::Error> for HandlerError {
+    fn into(self) -> actix_web::Error {
+        match self {
+            Self::BookmarkNotExists => error::ErrorNotFound(self),
+            Self::PlaylistNotExists => error::ErrorNotFound(self),
+            Self::PlaylistNotOwned => error::ErrorForbidden(self),
+            Self::PlaylistExists => error::ErrorConflict(self),
+            Self::NotSubscribed => error::ErrorBadRequest(self),
+            Self::SubscriptionGroupNotFound => error::ErrorNotFound(self),
+            Self::SubscribeBeforeChannelGroup => error::ErrorBadRequest(self),
+            Self::RegistrationIsDisabled => error::ErrorMethodNotAllowed(self),
+            Self::PasswordTooShort => error::ErrorBadRequest(self),
+            Self::AccountnameTaken => error::ErrorConflict(self),
+            Self::AccountNotExists => error::ErrorNotFound(self),
+            Self::InvalidCredentials => error::ErrorForbidden(self),
+            Self::InvalidToken => error::ErrorUnauthorized(self),
+            Self::NotInWatchHistory => error::ErrorNotFound(self),
+        }
+    }
+}
 
 // https://github.com/actix/actix-web/discussions/3074
 pub trait ScopedHandler {
