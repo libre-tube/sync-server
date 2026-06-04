@@ -127,11 +127,19 @@ pub async fn get_playlist_by_id(
     playlist_id_: &str,
     account_id_: &str,
 ) -> Result<Option<Playlist>, DbError> {
-    let playlist_ = playlist
+    let mut playlist_: Option<Playlist> = playlist
         .filter(id.eq(playlist_id_).and(playlist_account_id.eq(account_id_)))
         .first(conn)
         .await
         .optional()?;
+
+    if let Some(ref mut p) = playlist_
+        && p.thumbnail_url.is_none()
+        && let Ok(Some(first_video)) =
+            get_playlist_first_video(conn, playlist_id_, account_id_).await
+    {
+        p.thumbnail_url = Some(first_video.thumbnail_url);
+    }
 
     Ok(playlist_)
 }
@@ -157,6 +165,24 @@ pub async fn get_playlist_by_id_with_videos(
         .await?;
 
     Ok(Some((playlist_, videos)))
+}
+
+pub async fn get_playlist_first_video(
+    conn: &mut DbConnection,
+    playlist_id_: &str,
+    account_id_: &str,
+) -> Result<Option<Video>, DbError> {
+    playlist_video_member
+        .filter(
+            playlist_id
+                .eq(playlist_id_)
+                .and(playlist_video_member_account_id.eq(account_id_)),
+        )
+        .inner_join(video::table)
+        .select(Video::as_select())
+        .first(conn)
+        .await
+        .optional()
 }
 
 pub async fn get_playlist_video_count(

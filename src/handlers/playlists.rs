@@ -14,7 +14,7 @@ use crate::{
     },
     dto::{CreatePlaylist, CreateVideo, ExtendedPlaylist, PlaylistResponse},
     get_db_conn,
-    handlers::{HandlerError, HandlerResult, ScopedHandler, user::auth_middleware, utils},
+    handlers::{HandlerError, HandlerResult, ScopedHandler, user::auth_middleware},
     models::{Account, Playlist},
     validation::validate_video_information_if_changed,
 };
@@ -67,13 +67,7 @@ async fn get_playlist(
         .map(|(video, channel)| CreateVideo::from((video, channel)))
         .collect();
 
-    let mut playlist = ExtendedPlaylist::from_playlist(&playlist, videos.len() as u64);
-
-    if let Some(video) = videos.first()
-        && playlist.thumbnail_url.is_none()
-    {
-        playlist.thumbnail_url = Some(utils::thumbnail_url_from_id(&video.id));
-    }
+    let playlist = ExtendedPlaylist::from_playlist(&playlist, videos.len() as u64);
 
     let playlist_response = PlaylistResponse { playlist, videos };
     Ok(HttpResponse::Ok().json(playlist_response))

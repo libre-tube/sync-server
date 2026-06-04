@@ -18,8 +18,6 @@ pub mod subscriptions;
 pub mod user;
 pub mod watch_history;
 
-pub mod utils;
-
 #[derive(thiserror::Error, Debug)]
 pub enum HandlerError {
     #[error("bookmark doesn't exists")]
