@@ -133,12 +133,8 @@ pub async fn get_playlist_by_id(
         .await
         .optional()?;
 
-    if let Some(ref mut p) = playlist_
-        && p.thumbnail_url.is_none()
-        && let Ok(Some(first_video)) =
-            get_playlist_first_video(conn, playlist_id_, account_id_).await
-    {
-        p.thumbnail_url = Some(first_video.thumbnail_url);
+    if let Some(ref mut playlist_) = playlist_ {
+        assign_thumbnail_if_missing(conn, playlist_).await?;
     }
 
     Ok(playlist_)
@@ -185,6 +181,20 @@ pub async fn get_playlist_first_video(
         .optional()
 }
 
+pub async fn assign_thumbnail_if_missing(
+    conn: &mut DbConnection,
+    playlist_: &mut Playlist,
+) -> Result<(), DbError> {
+    if playlist_.thumbnail_url.is_none()
+        && let Some(first_video) =
+            get_playlist_first_video(conn, &playlist_.id, &playlist_.account_id).await?
+    {
+        playlist_.thumbnail_url = Some(first_video.thumbnail_url);
+    }
+
+    Ok(())
+}
+
 pub async fn get_playlist_video_count(
     conn: &mut DbConnection,
     playlist_id_: &str,
@@ -206,11 +216,15 @@ pub async fn get_playlists_by_account_id(
     conn: &mut DbConnection,
     account_id_: &str,
 ) -> Result<Vec<Playlist>, DbError> {
-    let playlists = playlist
+    let mut playlists = playlist
         .filter(playlist_account_id.eq(account_id_.to_string()))
         .select(Playlist::as_select())
         .load(conn)
         .await?;
+
+    for playlist_ in &mut playlists {
+        assign_thumbnail_if_missing(conn, playlist_).await?;
+    }
 
     Ok(playlists)
 }
