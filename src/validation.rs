@@ -1,8 +1,7 @@
 //! Validates user-provided data to be valid (to some extent, as it only has limited info due to using YouTube's RSS feeds)
 
-use std::{cmp::max, str::FromStr};
+use std::{cmp::max, collections::HashMap};
 
-use actix_web::http::Uri;
 use itertools::Itertools;
 
 use crate::{
@@ -26,18 +25,72 @@ const ALLOWED_THUMBNAIL_DOMAINS: [&str; 5] = [
     "googleusercontent.com",
 ];
 
-fn verify_image_url(image_url: &str) -> bool {
-    // TODO: don't rely on Actix for this, bad separation of concerns
-    let Ok(uri) = Uri::from_str(image_url) else {
-        return false;
-    };
+#[derive(Debug, Clone, Copy)]
+enum UrlProtocol {
+    Http,
+    Https,
+}
 
-    let Some(host) = uri.host() else {
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+struct Url<'a> {
+    protocol: UrlProtocol,
+    host: &'a str,
+    path: &'a str,
+    query: HashMap<&'a str, &'a str>,
+    fragment: Option<&'a str>,
+}
+
+// NOTE: Can't implement FromStr trait because Url needs a lifetime
+impl<'a> Url<'a> {
+    fn parse_from_str(s: &'a str) -> Result<Self, &'static str> {
+        let (protocol, s) = if s.starts_with("https://") {
+            (UrlProtocol::Https, &s[8..])
+        } else if s.starts_with("http://") {
+            (UrlProtocol::Http, &s[7..])
+        } else {
+            return Err("invalid url protocol (missing http:// or https://)");
+        };
+
+        let (s, fragment_) = s.split_once("#").unwrap_or((s, ""));
+        let (s, query_) = s.split_once("?").unwrap_or((s, ""));
+        let (host, path) = s.split_once("/").unwrap_or((s, ""));
+
+        let fragment = if fragment_.is_empty() {
+            None
+        } else {
+            Some(fragment_)
+        };
+
+        let mut query = HashMap::new();
+
+        if !query_.is_empty() {
+            for q in query_.split("&") {
+                let Some((key, val)) = q.split_once("=") else {
+                    return Err("invalid key-value pair in url's query");
+                };
+
+                query.insert(key, val);
+            }
+        }
+
+        Ok(Self {
+            protocol,
+            host,
+            path,
+            query,
+            fragment,
+        })
+    }
+}
+
+fn verify_image_url(image_url: &str) -> bool {
+    let Ok(url) = Url::parse_from_str(image_url) else {
         return false;
     };
 
     for thumbnail_domain in ALLOWED_THUMBNAIL_DOMAINS {
-        if host.ends_with(thumbnail_domain) {
+        if url.host.ends_with(thumbnail_domain) {
             return true;
         }
     }
