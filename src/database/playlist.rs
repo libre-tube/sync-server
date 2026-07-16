@@ -87,7 +87,6 @@ pub async fn add_video_to_playlist(
 ) -> Result<(), DbError> {
     create_or_update_video(conn, video_).await?;
 
-    // TODO: support adding the same video to a playlist multiple times
     let new_playlist_video_member = PlaylistVideoMember {
         account_id: account_id_.to_string(),
         playlist_id: playlist_id_.to_string(),

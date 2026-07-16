@@ -41,13 +41,13 @@ struct Url<'a> {
     fragment: Option<&'a str>,
 }
 
-// NOTE: Can't implement FromStr trait because Url needs a lifetime
 impl<'a> Url<'a> {
+    // Can't implement FromStr trait because Url needs a lifetime
     fn parse_from_str(s: &'a str) -> Result<Self, &'static str> {
-        let (protocol, s) = if s.starts_with("https://") {
-            (UrlProtocol::Https, &s[8..])
-        } else if s.starts_with("http://") {
-            (UrlProtocol::Http, &s[7..])
+        let (protocol, s) = if let Some(stripped) = s.strip_prefix("https://") {
+            (UrlProtocol::Https, stripped)
+        } else if let Some(stripped) = s.strip_prefix("http://") {
+            (UrlProtocol::Http, stripped)
         } else {
             return Err("invalid url protocol (missing http:// or https://)");
         };
