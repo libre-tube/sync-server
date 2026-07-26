@@ -17,6 +17,7 @@ use crate::{
         playlists::PlaylistsHandler, subscriptions::SubscriptionsHandler, user::UserHandler,
         watch_history::WatchHistoryHandler,
     },
+    oidc::init_oidc,
     openapi::ApiDoc,
 };
 
@@ -26,6 +27,7 @@ mod database;
 mod dto;
 mod handlers;
 mod models;
+mod oidc;
 mod openapi;
 mod schema;
 mod validation;
@@ -64,6 +66,10 @@ async fn main() -> io::Result<()> {
 
     // run database migrations (must be done BEFORE the server is started!)
     run_migrations(&pool).await;
+
+    if let Some(oidc) = &CONFIG.oidc {
+        init_oidc(oidc).await;
+    }
 
     log::info!("starting HTTP server at http://localhost:8080");
 

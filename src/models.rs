@@ -20,7 +20,8 @@ use super::schema::*;
 pub struct Account {
     pub id: String,
     pub name_hash: String,
-    pub password_hash: String,
+    pub password_hash: Option<String>,
+    pub oidc_sub: Option<String>,
 }
 
 #[derive(

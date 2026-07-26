@@ -1,4 +1,0 @@
-database_url = "./db.sqlite"
-secret_key = "changeme"
-allow_registration = true
-validate_submitted_metadata = true

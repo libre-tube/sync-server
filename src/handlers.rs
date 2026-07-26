@@ -9,7 +9,7 @@ use actix_web::{
 };
 use utoipa_actix_web::scope::Scope;
 
-use crate::models::Account;
+use crate::{models::Account, oidc::OidcError};
 
 pub mod health;
 pub mod playlist_bookmarks;
@@ -58,6 +58,10 @@ pub enum HandlerError {
     ValidationErrorWithContext(String),
     #[error("failed to load data from YouTube")]
     YouTubeConnectError,
+    #[error("{0}")]
+    OidcError(OidcError),
+    #[error("account doesn't support logging in via password")]
+    PasswordLoginDisabledForAccount,
 }
 
 impl ResponseError for HandlerError {
@@ -82,6 +86,8 @@ impl ResponseError for HandlerError {
             Self::ValidationError => StatusCode::BAD_REQUEST,
             Self::ValidationErrorWithContext(_) => StatusCode::BAD_REQUEST,
             Self::YouTubeConnectError => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::OidcError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::PasswordLoginDisabledForAccount => StatusCode::BAD_REQUEST,
         }
     }
 }

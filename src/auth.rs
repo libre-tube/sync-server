@@ -65,6 +65,7 @@ pub fn verify_password(password: &str, password_hash: &str) -> bool {
 }
 
 /// Generate HMAC of accountname. Usernames are not stored in plaintext for better anonymity.
+/// It's not possible to restore the username even if `secret_key` is known (except for brute-forcing).
 pub fn hash_accountname(accountname: &str, secret_key: &[u8]) -> String {
     let mut mac = Hmac::<Sha256>::new_from_slice(accountname.as_bytes()).unwrap();
     mac.update(secret_key);

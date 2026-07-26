@@ -1,0 +1,10 @@
+database_url = "./db.sqlite"
+secret_key = "changeme"
+allow_registration = true
+validate_submitted_metadata = true
+
+[oidc]
+provider_url = "http://localhost:9400"
+client_id = "changeme"
+client_secret = "changeme"
+app_url = "http://localhost:8080"

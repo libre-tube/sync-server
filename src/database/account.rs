@@ -51,10 +51,21 @@ pub async fn insert_new_account(
 pub async fn delete_existing_account(
     conn: &mut DbConnection,
     account_id: &str, // prevent collision with db column imported inside the function
-) -> Result<(), DbError> {
-    diesel::delete(account.filter(id.eq(account_id.to_string())))
+) -> Result<bool, DbError> {
+    let rows_affected = diesel::delete(account.filter(id.eq(account_id.to_string())))
         .execute(conn)
         .await?;
 
-    Ok(())
+    Ok(rows_affected == 1)
+}
+
+pub async fn delete_existing_account_by_oidc_sub(
+    conn: &mut DbConnection,
+    oidc_sub_: &str, // prevent collision with db column imported inside the function
+) -> Result<bool, DbError> {
+    let rows_affected = diesel::delete(account.filter(oidc_sub.eq(oidc_sub_.to_string())))
+        .execute(conn)
+        .await?;
+
+    Ok(rows_affected == 1)
 }

@@ -5,6 +5,14 @@ const fn default_true() -> bool {
 }
 
 #[derive(serde::Deserialize, Clone)]
+pub struct OidcConfig {
+    pub provider_url: String,
+    pub client_id: String,
+    pub client_secret: String,
+    pub app_url: String,
+}
+
+#[derive(serde::Deserialize, Clone)]
 pub struct Config {
     #[serde(rename = "secret_key")]
     pub secret: String,
@@ -13,6 +21,8 @@ pub struct Config {
     #[serde(default = "default_true")]
     pub validate_submitted_metadata: bool,
     pub database_url: String,
+    #[serde(default)]
+    pub oidc: Option<OidcConfig>,
 }
 
 pub fn build_config() -> Result<Config, ConfigError> {

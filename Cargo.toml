@@ -26,7 +26,7 @@ diesel = { version = "2.3" }
 diesel-async = { version = "0.8", features = [
   "async-connection-wrapper",
   "bb8",
-  "migrations"
+  "migrations",
 ] }
 diesel_migrations = { version = "2.3" }
 uuid = { version = "1", features = ["serde", "v7"] }
@@ -39,11 +39,13 @@ log = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1" }
 
-# Password hashing and username anonymization
+# Authentication
 argon2 = { version = "0.5.3", features = ["std"] }
 hmac = "0.13"
 jsonwebtoken = { version = "10.3.0", features = ["rust_crypto"] }
 sha2 = "0.11.0"
+openidconnect = { version = "4.0", features = ["reqwest"] }
+reqwest = "0.12"                                                  # version 0.12 is required by oauth2 crate used by openidconnect
 
 # YouTube scraping
 ytrss = { path = "ytrss" }
@@ -51,7 +53,7 @@ ytrss = { path = "ytrss" }
 # Helper crates
 config = { version = "0.15.22", default-features = false, features = [
   "convert-case",
-  "toml"
+  "toml",
 ] }
 itertools = "0.14"
 libsqlite3-sys = { version = "0.37.0", features = ["bundled"] }
