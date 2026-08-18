@@ -116,7 +116,9 @@ fn validate_channel_information(
     mut channel: Channel,
     rss_channel: &RssChannel,
 ) -> Result<Channel, String> {
-    if !verify_image_url(&channel.avatar) {
+    if let Some(ref avatar) = channel.avatar
+        && !verify_image_url(avatar)
+    {
         return Err("invalid channel avatar provided".to_string());
     }
 

@@ -13,7 +13,7 @@ diesel::table! {
     channel (id) {
         id -> Text,
         name -> Text,
-        avatar -> Text,
+        avatar -> Nullable<Text>,
         verified -> Bool,
     }
 }

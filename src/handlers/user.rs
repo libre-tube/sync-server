@@ -153,7 +153,7 @@ async fn delete_account(
         return Err(HandlerError::PasswordLoginDisabledForAccount);
     };
 
-    if !verify_password(&form.password, &password_hash) {
+    if !verify_password(&form.password, password_hash) {
         return Err(HandlerError::InvalidCredentials);
     }
 

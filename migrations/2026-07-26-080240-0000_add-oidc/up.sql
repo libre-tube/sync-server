@@ -6,7 +6,7 @@ CREATE TABLE account_temp(
     password_hash VARCHAR NULL
 );
 INSERT INTO account_temp SELECT * FROM account;
-DROP TABLE account CASCADE;
+DROP TABLE account;
 ALTER TABLE account_temp RENAME TO account;
 
 -- add oidc sub

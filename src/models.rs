@@ -42,7 +42,7 @@ pub struct Account {
 pub struct Channel {
     pub id: String,
     pub name: String,
-    pub avatar: String,
+    pub avatar: Option<String>,
     pub verified: bool,
 }
 
