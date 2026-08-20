@@ -1,0 +1,8 @@
+DROP TABLE IF EXISTS channel CASCADE;
+CREATE TABLE channel
+(
+    id VARCHAR(24) PRIMARY KEY NOT NULL,
+    name VARCHAR NOT NULL,
+    avatar VARCHAR NOT NULL,
+    verified BOOLEAN NOT NULL
+);

@@ -40,10 +40,13 @@ static CONFIG: LazyLock<config::Config> = LazyLock::new(|| match config::build_c
     }
 });
 
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations/");
-
 #[cfg(all(feature = "sqlite", feature = "postgres"))]
 compile_error!("Sqlite and Postgres are mutually exclusive and cannot be enabled together");
+
+#[cfg(feature = "sqlite")]
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations/sqlite/");
+#[cfg(feature = "postgres")]
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations/postgres/");
 
 #[cfg(feature = "sqlite")]
 type DbConnection =
