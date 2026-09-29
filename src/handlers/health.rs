@@ -1,7 +1,11 @@
-use actix_web::{Responder, routes};
+use actix_web::{HttpResponse, Responder, get, routes};
 use utoipa_actix_web::scope;
 
-use crate::handlers::ScopedHandler;
+use crate::{
+    CONFIG,
+    dto::{ExtendedMetaResponse, LibreTubeApiMetaResponse, MetaResponse},
+    handlers::{HandlerResult, ScopedHandler},
+};
 
 pub struct HealthHandler {}
 impl ScopedHandler for HealthHandler {
@@ -14,7 +18,9 @@ impl ScopedHandler for HealthHandler {
             Error = actix_web::Error,
         >,
     > {
-        scope::scope("").service(health_state)
+        scope::scope("")
+            .service(health_state)
+            .service(server_metainfo)
     }
 }
 
@@ -25,4 +31,18 @@ impl ScopedHandler for HealthHandler {
 #[get("/healthz")]
 async fn health_state() -> impl Responder {
     "OK"
+}
+
+#[utoipa::path(responses((status = OK, body = MetaResponse)))]
+#[get("/meta")]
+async fn server_metainfo() -> HandlerResult<impl Responder> {
+    Ok(HttpResponse::Ok().json(MetaResponse {
+        api: LibreTubeApiMetaResponse {
+            base: env!("CARGO_PKG_VERSION").into(),
+        },
+        extras: ExtendedMetaResponse {
+            version: env!("CARGO_PKG_VERSION").into(),
+            oidc: CONFIG.oidc.is_some(),
+        },
+    }))
 }

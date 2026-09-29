@@ -32,6 +32,8 @@ mod openapi;
 mod schema;
 mod validation;
 
+const BASE_API_PATH: &str = "/v1";
+
 static CONFIG: LazyLock<config::Config> = LazyLock::new(|| match config::build_config() {
     Ok(c) => c,
     Err(e) => {
@@ -82,7 +84,7 @@ async fn main() -> io::Result<()> {
             // add DB pool handle to app data; enables use of `web::Data<DbPool>` extractor
             .app_data(web::Data::new(pool.clone()))
             .service(
-                utoipa_actix_web::scope("/v1")
+                utoipa_actix_web::scope(BASE_API_PATH)
                     .service(UserHandler::get_service())
                     .service(SubscriptionsHandler::get_service())
                     .service(PlaylistsHandler::get_service())
