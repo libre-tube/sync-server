@@ -20,11 +20,11 @@ pub mod watch_history;
 
 #[derive(thiserror::Error, Debug)]
 pub enum HandlerError {
-    #[error("bookmark doesn't exists")]
+    #[error("bookmark doesn't exist")]
     BookmarkNotExists,
-    #[error("playlist doesn't exists")]
+    #[error("playlist doesn't exist")]
     PlaylistNotExists,
-    #[error("account doesn't exists")]
+    #[error("account doesn't exist")]
     AccountNotExists,
     #[error("not the owner of the playlist")]
     PlaylistNotOwned,
