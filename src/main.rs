@@ -63,6 +63,11 @@ type WebData = web::Data<DbPool>;
 async fn main() -> io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
+    if CONFIG.is_using_default_secrets() {
+        log::error!("Refusing to run with default secrets");
+        std::process::exit(1);
+    }
+
     // initialize DB pool outside `HttpServer::new` so that it is shared across all workers
     let pool = match initialize_db_pool(&CONFIG.database_url).await {
         Ok(pool) => pool,
