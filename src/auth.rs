@@ -1,3 +1,4 @@
+use std::ops::Add;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use argon2::password_hash::SaltString;
@@ -23,8 +24,7 @@ pub fn generate_jwt(account: &Account, secret_key: &[u8]) -> jsonwebtoken::error
     let key = EncodingKey::from_secret(secret_key);
     // tokens are valid for one year, should be enough in most cases
     let expiration_date = SystemTime::now()
-        .checked_add(Duration::from_hours(365 * 24))
-        .unwrap()
+        .add(Duration::from_hours(365 * 24))
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_millis();
