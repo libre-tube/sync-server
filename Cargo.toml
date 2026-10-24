@@ -24,9 +24,9 @@ utoipa-scalar = { version = "0.3", features = ["actix-web"] }
 # Database
 diesel = { version = "2.3" }
 diesel-async = { version = "0.8", features = [
-  "async-connection-wrapper",
-  "bb8",
-  "migrations",
+    "async-connection-wrapper",
+    "bb8",
+    "migrations",
 ] }
 diesel_migrations = { version = "2.3" }
 uuid = { version = "1", features = ["serde", "v7"] }
@@ -52,13 +52,14 @@ ytrss = { path = "ytrss" }
 
 # Helper crates
 config = { version = "0.15.22", default-features = false, features = [
-  "convert-case",
-  "toml",
+    "convert-case",
+    "toml",
 ] }
 itertools = "0.14"
 libsqlite3-sys = { version = "0.37.0", features = ["bundled"] }
 thiserror = "2.0.18"
 url = "2.5.8"
+sha1 = "0.11.0"
 
 [features]
 default = ["sqlite"]

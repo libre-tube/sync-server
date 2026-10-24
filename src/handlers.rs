@@ -40,6 +40,8 @@ pub enum HandlerError {
     RegistrationDisabled,
     #[error("password too short (8 chars min)")]
     PasswordTooShort,
+    #[error("password is included in a data breach")]
+    PasswordBreached,
     #[error("accountname already taken")]
     AccountNameTaken,
     #[error("invalid accountname or password")]
@@ -78,6 +80,7 @@ impl ResponseError for HandlerError {
             Self::SubscribeBeforeChannelGroup => StatusCode::BAD_REQUEST,
             Self::RegistrationDisabled => StatusCode::METHOD_NOT_ALLOWED,
             Self::PasswordTooShort => StatusCode::BAD_REQUEST,
+            Self::PasswordBreached => StatusCode::BAD_REQUEST,
             Self::AccountNameTaken => StatusCode::CONFLICT,
             Self::AccountNotExists => StatusCode::NOT_FOUND,
             Self::InvalidCredentials => StatusCode::FORBIDDEN,

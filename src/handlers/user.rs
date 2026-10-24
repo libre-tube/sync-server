@@ -4,11 +4,15 @@ use actix_web::middleware::Next;
 use actix_web::web::Redirect;
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, delete, get, patch, post, web};
 use diesel::result::DatabaseErrorKind;
+use jsonwebtoken::signature::digest::generic_array::sequence::Lengthen;
 use serde::Deserialize;
+use sha1::Digest;
 use utoipa_actix_web::scope;
 use uuid::Uuid;
 
-use crate::auth::{generate_jwt, hash_accountname, hash_password, verify_jwt, verify_password};
+use crate::auth::{
+    bytes_to_hex_string, generate_jwt, hash_accountname, hash_password, verify_jwt, verify_password,
+};
 use crate::database::account::{
     delete_existing_account, delete_existing_account_by_oidc_sub, find_account_by_id,
     find_account_by_name_hash, insert_new_account, update_account,
@@ -56,10 +60,31 @@ impl ScopedHandler for UserHandler {
     }
 }
 
-fn validate_password_strength(password: &str) -> HandlerResult<()> {
+/// Returns the number of times the password has been found in data breaches.
+async fn has_password_leaked(password: &str) -> Option<bool> {
+    let hash = bytes_to_hex_string(&sha1::Sha1::digest(password));
+    let (head, tail) = hash.strip_prefix("0x")?.split_at(5);
+
+    reqwest::get(format!("https://api.pwnedpasswords.com/range/{}", head))
+        .await
+        .ok()?
+        .text()
+        .await
+        .ok()?
+        .lines()
+        .flat_map(|line| line.split_once(":"))
+        .find(|&(hash, _count)| hash == tail)
+        .map(|(_hash, count)| count.parse::<u32>().is_ok_and(|c| c > 1))
+}
+
+async fn validate_password_strength(password: &str) -> HandlerResult<()> {
     let password_length = password.len();
     if password_length < MIN_PASSWORD_LENGTH {
         return Err(HandlerError::PasswordTooShort);
+    }
+
+    if has_password_leaked(password).await == Some(true) {
+        return Err(HandlerError::PasswordBreached);
     }
 
     Ok(())
@@ -80,7 +105,7 @@ async fn register_account(
         return Err(HandlerError::InvalidCredentials);
     }
 
-    validate_password_strength(&form.password)?;
+    validate_password_strength(&form.password).await?;
 
     let account = models::Account {
         id: Uuid::now_v7().to_string(),
@@ -162,7 +187,7 @@ async fn change_password(
         return Err(HandlerError::InvalidCredentials);
     }
 
-    validate_password_strength(&form.new_password)?;
+    validate_password_strength(&form.new_password).await?;
 
     account.password_hash = Some(hash_password(&form.new_password));
     match update_account(&mut conn, &account).await {
