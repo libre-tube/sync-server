@@ -307,7 +307,7 @@ mod test {
                 Channel {
                     id: "UC8-Th83bH_thdKZDJCrn88g".to_string(),
                     name: "The Tonight Show Starring Jimmy Fallon".to_string(),
-                    avatar: "https://i1.ytimg.com/vi/hTC6Xa5TrRc/hqdefault.jpg".to_string(),
+                    avatar: Some("https://i1.ytimg.com/vi/hTC6Xa5TrRc/hqdefault.jpg".to_string()),
                     verified: true,
                 },
                 &channel_rss
@@ -320,7 +320,7 @@ mod test {
                 Channel {
                     id: "UC8-Th83bH_thdKZDJCrn88g".to_string(),
                     name: "The Tonight Show Starring Jimmy Fallon".to_string(),
-                    avatar: "https://i1.example.com/vi/hTC6Xa5TrRc/hqdefault.jpg".to_string(),
+                    avatar: Some("https://i1.example.com/vi/hTC6Xa5TrRc/hqdefault.jpg".to_string()),
                     verified: true,
                 },
                 &channel_rss
@@ -333,7 +333,7 @@ mod test {
                 Channel {
                     id: "UC8-Th83bH_thdKZDJCrn88g".to_string(),
                     name: "Wrong channel name".to_string(),
-                    avatar: "https://i1.example.com/vi/hTC6Xa5TrRc/hqdefault.jpg".to_string(),
+                    avatar: Some("https://i1.example.com/vi/hTC6Xa5TrRc/hqdefault.jpg".to_string()),
                     verified: true,
                 },
                 &channel_rss
@@ -354,7 +354,7 @@ mod test {
                 Channel {
                     id: "UCjp_3PEaOau_nT_3vnqKIvg".to_string(),
                     name: "Junya Official Channel".to_string(),
-                    avatar: "https://yt3.googleusercontent.com/ytc/AIdro_mFt9iiVlgxD1gBW74I1o6H8xFtOg5AwqPj2_1JKHJ4UJg=s160-c-k-c0x00ffffff-no-rj".to_string(),
+                    avatar: Some("https://yt3.googleusercontent.com/ytc/AIdro_mFt9iiVlgxD1gBW74I1o6H8xFtOg5AwqPj2_1JKHJ4UJg=s160-c-k-c0x00ffffff-no-rj".to_string()),
                     verified: true,
                 },
                 &channel_rss
@@ -374,7 +374,7 @@ mod test {
             uploader: Channel {
                 id: "UCWnQYRWgTbsLTDOAVc3uzRg".to_string(),
                 name: "KottiXD".to_string(),
-                avatar: "https://yt3.googleusercontent.com/ytc/AIdro_lBXTw2HqumabqUMrMcWlB5BVUa-bDCP1YQ0Jwf89C6RMY=s160-c-k-c0x00ffffff-no-rj".to_string(),
+                avatar: Some("https://yt3.googleusercontent.com/ytc/AIdro_lBXTw2HqumabqUMrMcWlB5BVUa-bDCP1YQ0Jwf89C6RMY=s160-c-k-c0x00ffffff-no-rj".to_string()),
                 verified: false,
             },
         };
