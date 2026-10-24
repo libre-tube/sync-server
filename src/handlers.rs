@@ -38,7 +38,7 @@ pub enum HandlerError {
     SubscribeBeforeChannelGroup,
     #[error("registration is disabled on this server")]
     RegistrationDisabled,
-    #[error("password too short (8 chars min)")]
+    #[error("password too short (25 chars min)")]
     PasswordTooShort,
     #[error("accountname already taken")]
     AccountNameTaken,

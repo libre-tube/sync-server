@@ -20,7 +20,7 @@ use crate::oidc::check_oidc_auth_request;
 use crate::{CONFIG, WebData, dto, get_db_conn, models, oidc};
 
 const AUTH_HEADER_KEY: &str = "Authorization";
-const MIN_PASSWORD_LENGTH: usize = 8;
+const MIN_PASSWORD_LENGTH: usize = 25;
 const OIDC_ACCOUNT_PREFIX: &str = "OIDC-ACCOUNT-";
 
 pub struct UserHandler {}
