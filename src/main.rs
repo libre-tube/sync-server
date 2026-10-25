@@ -63,8 +63,11 @@ type WebData = web::Data<DbPool>;
 async fn main() -> io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
-    if !CONFIG.is_valid() {
-        log::error!("Refusing to run with default secrets");
+    if let Err(errors) = CONFIG.validate() {
+        for error in errors {
+            log::error!("{error}");
+        }
+        log::error!("Refusing to run with invalid config");
         std::process::exit(1);
     }
 

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use config::ConfigError;
 
 const fn default_true() -> bool {
@@ -38,28 +40,46 @@ impl Config {
             .try_deserialize()
     }
 
-    /// Whether the config is using default values for secrets.
-    pub fn is_valid(&self) -> bool {
-        let mut is_valid = true;
+    /// Validates the config.
+    pub fn validate(&self) -> Result<(), Vec<ConfigValidationError>> {
+        let mut errors = Vec::new();
 
         if self.secret == Self::DEFAULT_SECRET_KEY {
-            log::error!("`secret_key` is using the default value, please change it");
-            is_valid = false;
+            errors.push(ConfigValidationError::DefaultSecret("secret_key"));
         }
 
         if let Some(oidc) = &self.oidc {
             if oidc.client_id == Self::DEFAULT_SECRET_KEY {
-                log::error!("`oidc.client_id` is using the default value, please change it");
-                is_valid = false;
+                errors.push(ConfigValidationError::DefaultSecret("oidc.client_id"));
             }
 
             if oidc.client_secret == Self::DEFAULT_SECRET_KEY {
-                log::error!("`oidc.client_secret` is using the default value, please change it");
-                is_valid = false;
+                errors.push(ConfigValidationError::DefaultSecret("oidc.client_secret"));
             }
         }
 
-        is_valid
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }
 
+/// Invalid config errors.
+pub enum ConfigValidationError {
+    /// A default value has been used for a secret.
+    DefaultSecret(&'static str),
+}
+
+impl Display for ConfigValidationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConfigValidationError::DefaultSecret(value) => write!(
+                f,
+                "`{}` is using the default value, please change it",
+                value
+            ),
+        }
+    }
+}
