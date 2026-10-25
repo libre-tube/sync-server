@@ -30,25 +30,27 @@ impl Config {
     const DEFAULT_SECRET_KEY: &str = "changeme";
 
     /// Whether the config is using default values for secrets.
-    pub fn is_using_default_secrets(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
+        let mut is_valid = true;
+
         if self.secret == Self::DEFAULT_SECRET_KEY {
             log::error!("`secret_key` is using the default value, please change it");
-            return true;
+            is_valid = false;
         }
 
         if let Some(oidc) = &self.oidc {
             if oidc.client_id == Self::DEFAULT_SECRET_KEY {
                 log::error!("`oidc.client_id` is using the default value, please change it");
-                return true;
+                is_valid = false;
             }
 
             if oidc.client_secret == Self::DEFAULT_SECRET_KEY {
                 log::error!("`oidc.client_secret` is using the default value, please change it");
-                return true;
+                is_valid = false;
             }
         }
 
-        false
+        is_valid
     }
 }
 
