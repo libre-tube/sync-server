@@ -56,6 +56,18 @@ impl Config {
             if oidc.client_secret == Self::DEFAULT_SECRET_KEY {
                 errors.push(ConfigValidationError::DefaultSecret("oidc.client_secret"));
             }
+
+            if oidc.provider_url.is_empty() {
+                errors.push(ConfigValidationError::InvalidUrl("oidc.provider_url"));
+            }
+
+            if oidc.app_url.is_empty() {
+                errors.push(ConfigValidationError::InvalidUrl("oidc.app_url"));
+            }
+        }
+
+        if self.database_url.is_empty() {
+            errors.push(ConfigValidationError::InvalidUrl("database_url"));
         }
 
         if errors.is_empty() {
@@ -70,6 +82,8 @@ impl Config {
 pub enum ConfigValidationError {
     /// A default value has been used for a secret.
     DefaultSecret(&'static str),
+    /// The set URL is not valid.
+    InvalidUrl(&'static str),
 }
 
 impl Display for ConfigValidationError {
@@ -80,6 +94,7 @@ impl Display for ConfigValidationError {
                 "`{}` is using the default value, please change it",
                 value
             ),
+            ConfigValidationError::InvalidUrl(value) => write!(f, "`{}` is not a valid URL", value),
         }
     }
 }
