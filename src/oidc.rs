@@ -74,7 +74,7 @@ pub enum OidcError {
     MalformedRedirectUri(String),
     #[error("invalid token response: {0}")]
     InvalidTokenResponse(String),
-    #[error("provided session does not exist")]
+    #[error("provided session doesn't exist")]
     InvalidSession,
 }
 
