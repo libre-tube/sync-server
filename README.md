@@ -41,8 +41,12 @@ There are two ways to configure `sync-server`
 | `client_secret`                 | Client secret of the OAuth app configured at the OIDC provider | None       | SomeVerySecureString64   |
 | `app_url`                       | Public URL to the `sync-server` instance                       | None       | https://sync.example.com |
 
-The OIDC app must be configured to allow redirects to `<your_app_url>/v1/account/oidc/authenticate/callback` and 
+The OIDC app must be configured to allow redirects to `<your_app_url>/v1/account/oidc/authenticate/callback` and
 `<your_app_url>/v1/account/oidc/authenticate/delete/callback`.
+
+### External Services
+
+The server relies on external services provided by YouTube (disable via `config.validate_submitted_metadata`) and haveibeenpwned (to check against using leaked passwords).
 
 ## API Documentation
 - Start the app, e.g. with `cargo run`.

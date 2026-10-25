@@ -4,7 +4,6 @@ use actix_web::middleware::Next;
 use actix_web::web::Redirect;
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, delete, get, patch, post, web};
 use diesel::result::DatabaseErrorKind;
-use jsonwebtoken::signature::digest::generic_array::sequence::Lengthen;
 use serde::Deserialize;
 use sha1::Digest;
 use utoipa_actix_web::scope;
