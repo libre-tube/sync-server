@@ -34,7 +34,7 @@ mod validation;
 
 const BASE_API_PATH: &str = "/v1";
 
-static CONFIG: LazyLock<config::Config> = LazyLock::new(|| match config::build_config() {
+static CONFIG: LazyLock<config::Config> = LazyLock::new(|| match config::Config::build() {
     Ok(c) => c,
     Err(e) => {
         error!("Failed to configure server: {e}");

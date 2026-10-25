@@ -29,6 +29,15 @@ impl Config {
     /// The default value for secrets in the config.
     const DEFAULT_SECRET_KEY: &str = "changeme";
 
+    /// Constructs the config using the `config.toml` file and environment variables.
+    pub fn build() -> Result<Config, ConfigError> {
+        config::Config::builder()
+            .add_source(config::File::with_name("config").required(false))
+            .add_source(config::Environment::with_convert_case(config::Case::Snake))
+            .build()?
+            .try_deserialize()
+    }
+
     /// Whether the config is using default values for secrets.
     pub fn is_valid(&self) -> bool {
         let mut is_valid = true;
@@ -54,10 +63,3 @@ impl Config {
     }
 }
 
-pub fn build_config() -> Result<Config, ConfigError> {
-    config::Config::builder()
-        .add_source(config::File::with_name("config").required(false))
-        .add_source(config::Environment::with_convert_case(config::Case::Snake))
-        .build()?
-        .try_deserialize()
-}
