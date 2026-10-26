@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use config::ConfigError;
 
 const fn default_true() -> bool {
@@ -79,22 +77,12 @@ impl Config {
 }
 
 /// Invalid config errors.
+#[derive(thiserror::Error, Debug)]
 pub enum ConfigValidationError {
     /// A default value has been used for a secret.
+    #[error("`{0}` is using the default value, please change it")]
     DefaultSecret(&'static str),
     /// The set URL is not valid.
+    #[error("`{0}` is not a valid URL")]
     InvalidUrl(&'static str),
-}
-
-impl Display for ConfigValidationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ConfigValidationError::DefaultSecret(value) => write!(
-                f,
-                "`{}` is using the default value, please change it",
-                value
-            ),
-            ConfigValidationError::InvalidUrl(value) => write!(f, "`{}` is not a valid URL", value),
-        }
-    }
 }
