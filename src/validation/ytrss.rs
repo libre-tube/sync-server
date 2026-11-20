@@ -182,7 +182,7 @@ impl Validator for RssValidator {
                 title: rss_playlist.title().to_string(),
                 description: playlist.playlist.description.clone(),
                 thumbnail_url: playlist.playlist.thumbnail_url.clone(),
-                video_count: playlist.playlist.video_count.clone(),
+                video_count: playlist.playlist.video_count,
             },
             uploader,
         })
