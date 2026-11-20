@@ -15,7 +15,7 @@ use crate::{
     get_db_conn,
     handlers::{HandlerError, HandlerResult, ScopedHandler, user::auth_middleware},
     models::Account,
-    validation::validate_public_playlist_information_if_changed,
+    validation::{VALIDATOR, Validator},
 };
 
 pub struct PlaylistBookmarksHandler {}
@@ -85,8 +85,14 @@ async fn create_playlist_bookmark(
 ) -> HandlerResult<impl Responder> {
     let mut conn = get_db_conn!(pool);
 
-    let playlist =
-        validate_public_playlist_information_if_changed(&mut conn, playlist.into_inner()).await?;
+    let mut playlist = playlist.into_inner();
+    VALIDATOR
+        .get()
+        .unwrap()
+        .is_playlist_information_valid(&playlist)
+        .await
+        .assign_changes(&mut playlist)
+        .into_result()?;
 
     create_or_update_channel(&mut conn, &playlist.uploader)
         .await
