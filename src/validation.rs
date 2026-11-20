@@ -33,7 +33,7 @@ pub enum ValidationError {
 pub enum ValidationResult<T> {
     Valid,
     ValidAfterChanges(T),
-    UnableToValidate,
+    UnableToValidate, // Not an error. Used when `Validator` wants to delegate validation to other.
     Invalid(ValidationError),
 }
 
@@ -104,6 +104,12 @@ impl CompositeValidator {
     }
 }
 
+//     resp =                resp =
+//       UnableToValidate      Invalid
+// +----------+    +----------+   |  +----------+
+// |Validator1|--->|Validator2| --+->|Validator3|
+// +----------+    +----------+   |  +----------+
+//                              break
 macro_rules! validate {
     ($self:ident, $fn:ident, $val:expr) => {{
         let mut resp = ValidationResult::UnableToValidate;
