@@ -43,10 +43,10 @@ pub fn verify_image_url(image_url: &str) -> bool {
     false
 }
 
-pub struct DummyValidator;
+pub struct BasicValidator;
 
 #[async_trait]
-impl Validator for DummyValidator {
+impl Validator for BasicValidator {
     async fn is_channel_information_valid(&self, channel: &Channel) -> ValidationResult<Channel> {
         if !CONFIG.validate_submitted_metadata {
             return ValidationResult::Valid;
@@ -57,9 +57,9 @@ impl Validator for DummyValidator {
             .as_ref()
             .is_some_and(|avatar_url| !verify_image_url(avatar_url))
         {
-            ValidationError::InvalidWithContext("avatar url".to_string()).into()
+            ValidationError::InvalidWithContext("channel avatar url".to_string()).into()
         } else {
-            ValidationResult::UnableToValidate
+            ValidationResult::Skip
         }
     }
 
@@ -71,10 +71,17 @@ impl Validator for DummyValidator {
             return ValidationResult::Valid;
         }
 
+        if let ValidationResult::Invalid(err) = self
+            .is_channel_information_valid(&video_data.uploader)
+            .await
+        {
+            return ValidationResult::Invalid(err);
+        }
+
         if !verify_image_url(&video_data.thumbnail_url) {
-            ValidationError::InvalidWithContext("thumbnail url".to_string()).into()
+            ValidationError::InvalidWithContext("video thumbnail url".to_string()).into()
         } else {
-            ValidationResult::UnableToValidate
+            ValidationResult::Skip
         }
     }
 
@@ -86,6 +93,12 @@ impl Validator for DummyValidator {
             return ValidationResult::Valid;
         }
 
+        if let ValidationResult::Invalid(err) =
+            self.is_channel_information_valid(&playlist.uploader).await
+        {
+            return ValidationResult::Invalid(err);
+        }
+
         if playlist
             .playlist
             .thumbnail_url
@@ -93,15 +106,8 @@ impl Validator for DummyValidator {
             .is_some_and(|thumbnail_url| !verify_image_url(thumbnail_url))
         {
             ValidationError::InvalidWithContext("playlist thumbnail".to_string()).into()
-        } else if playlist
-            .uploader
-            .avatar
-            .as_ref()
-            .is_some_and(|avatar| !verify_image_url(avatar))
-        {
-            ValidationError::InvalidWithContext("uploader avatar url".to_string()).into()
         } else {
-            ValidationResult::UnableToValidate
+            ValidationResult::Skip
         }
     }
 }

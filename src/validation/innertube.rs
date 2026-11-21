@@ -24,7 +24,7 @@ macro_rules! unwrap {
                 return if matches!(err, InnertubeError::NotFoundInJSON(_)) {
                     ValidationError::Invalid.into()
                 } else {
-                    ValidationResult::UnableToValidate
+                    ValidationResult::Skip
                 };
             }
         }
@@ -119,7 +119,7 @@ impl Validator for InnertubeValidator {
         {
             ValidationResult::Valid => (),
             ValidationResult::ValidAfterChanges(changes) => uploader = changes,
-            ValidationResult::UnableToValidate => return ValidationResult::UnableToValidate,
+            ValidationResult::Skip => return ValidationResult::Skip,
             ValidationResult::Invalid(err) => return ValidationResult::Invalid(err),
         };
 

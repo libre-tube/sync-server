@@ -32,7 +32,7 @@ impl Validator for DbValidator {
         {
             ValidationResult::Valid
         } else {
-            ValidationResult::UnableToValidate
+            ValidationResult::Skip
         }
     }
 
@@ -52,7 +52,7 @@ impl Validator for DbValidator {
         {
             ValidationResult::Valid
         } else {
-            ValidationResult::UnableToValidate
+            ValidationResult::Skip
         }
     }
 
@@ -70,7 +70,7 @@ impl Validator for DbValidator {
         {
             ValidationResult::Valid
         } else {
-            ValidationResult::UnableToValidate
+            ValidationResult::Skip
         }
     }
 }

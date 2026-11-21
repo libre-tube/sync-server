@@ -8,12 +8,12 @@ use crate::{
     dto::{CreateVideo, ExtendedPublicPlaylist},
     models::Channel,
     validation::{
-        db::DbValidator, dummy::DummyValidator, innertube::InnertubeValidator, ytrss::RssValidator,
+        basic::BasicValidator, db::DbValidator, innertube::InnertubeValidator, ytrss::RssValidator,
     },
 };
 
+mod basic;
 mod db;
-mod dummy;
 mod innertube;
 mod ytrss;
 
@@ -33,7 +33,8 @@ pub enum ValidationError {
 pub enum ValidationResult<T> {
     Valid,
     ValidAfterChanges(T),
-    UnableToValidate, // Not an error. Used when `Validator` wants to delegate validation to other.
+    /// Indicates that the validator decide to skip validating the data.
+    Skip,
     Invalid(ValidationError),
 }
 
@@ -55,7 +56,7 @@ impl<T> ValidationResult<T> {
         match self {
             Self::Valid => Ok(None),
             Self::ValidAfterChanges(val) => Ok(Some(val)),
-            Self::UnableToValidate => Err(ValidationError::UnableToValidate),
+            Self::Skip => Err(ValidationError::UnableToValidate),
             Self::Invalid(err) => Err(err),
         }
     }
@@ -104,21 +105,20 @@ impl CompositeValidator {
     }
 }
 
-//     resp =                resp =
-//       UnableToValidate      Invalid
+//             Skip           Invalid
 // +----------+    +----------+   |  +----------+
 // |Validator1|--->|Validator2| --+->|Validator3|
 // +----------+    +----------+   |  +----------+
 //                              break
 macro_rules! validate {
     ($self:ident, $fn:ident, $val:expr) => {{
-        let mut resp = ValidationResult::UnableToValidate;
+        let mut resp = ValidationResult::Skip;
 
         for validator in &$self.validators {
             resp = validator.$fn($val).await;
-            let ValidationResult::UnableToValidate = resp else {
+            if !matches!(resp, ValidationResult::Skip) {
                 break;
-            };
+            }
         }
 
         resp
@@ -159,7 +159,7 @@ pub fn init_validator(pool: DbPool) {
 
     let _ = VALIDATOR.set(
         CompositeValidator::new()
-            .validator(DummyValidator)
+            .validator(BasicValidator)
             .validator(DbValidator::new(pool))
             .validator(RssValidator::new(innertube))
             .maybe_validator(innertube.map(InnertubeValidator::new)),

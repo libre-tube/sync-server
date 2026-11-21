@@ -59,7 +59,7 @@ macro_rules! unwrap {
         match $fn {
             Ok(resp) => resp,
             Err(err) => match err {
-                YouTubeError::ConnectionError => return ValidationResult::UnableToValidate,
+                YouTubeError::ConnectionError => return ValidationResult::Skip,
                 _ => return ValidationError::Invalid.into(),
             },
         }
@@ -76,7 +76,7 @@ macro_rules! cmp {
                 .await
                 .is_ok_and(|$type| $type == $payload.$type)
         } else {
-            return ValidationResult::UnableToValidate;
+            return ValidationResult::Skip;
         }
     }};
 }
@@ -113,7 +113,7 @@ impl Validator for RssValidator {
             .oldest_video_date()
             .is_some_and(|oldest| oldest.timestamp_millis() > video_data.upload_date)
         {
-            return ValidationResult::UnableToValidate;
+            return ValidationResult::Skip;
         }
 
         let Some(rss_video) = rss_channel.find_video(&video_data.id) else {
@@ -174,7 +174,7 @@ impl Validator for RssValidator {
         {
             ValidationResult::Valid => (),
             ValidationResult::ValidAfterChanges(changes) => uploader = changes,
-            ValidationResult::UnableToValidate => return ValidationResult::UnableToValidate,
+            ValidationResult::Skip => return ValidationResult::Skip,
             ValidationResult::Invalid(err) => return ValidationResult::Invalid(err),
         };
 
