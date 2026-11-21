@@ -20,7 +20,7 @@ use crate::{
     get_db_conn,
     handlers::{HandlerError, HandlerResult, ScopedHandler, user::auth_middleware},
     models::{Account, Channel, SubscriptionGroup},
-    validation::validate_channel_information_if_changed,
+    validation::{VALIDATOR, Validator},
 };
 
 pub struct SubscriptionsHandler {}
@@ -95,8 +95,15 @@ async fn subscribe(
     let mut conn = get_db_conn!(pool);
 
     let mut channel = channel.into_inner();
+
     // verify that the provided information is valid
-    validate_channel_information_if_changed(&mut conn, &mut channel).await?;
+    VALIDATOR
+        .get()
+        .unwrap()
+        .is_channel_information_valid(&channel)
+        .await
+        .assign_changes(&mut channel)
+        .into_result()?;
 
     match add_subscription_by_account_id(&mut conn, &channel, &account.id).await {
         Ok(_) => Ok(HttpResponse::Ok()),

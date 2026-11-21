@@ -16,7 +16,7 @@ use crate::{
     get_db_conn,
     handlers::{HandlerError, HandlerResult, ScopedHandler, user::auth_middleware},
     models::{Account, Playlist},
-    validation::validate_video_information_if_changed,
+    validation::{VALIDATOR, Validator},
 };
 
 pub struct PlaylistsHandler {}
@@ -216,7 +216,19 @@ async fn add_to_playlist(
     for (mut channel, videos) in &videos_grouped_by_uploader {
         let mut videos: Vec<_> = videos.cloned().collect();
 
-        validate_video_information_if_changed(&mut conn, &mut videos, &mut channel).await?;
+        let it = VALIDATOR.get().unwrap();
+
+        it.is_channel_information_valid(&channel)
+            .await
+            .assign_changes(&mut channel)
+            .into_result()?;
+
+        for video in &mut videos {
+            it.is_video_information_valid(&*video)
+                .await
+                .assign_changes(video)
+                .into_result()?;
+        }
 
         // store channel information first before storing video to ensure data integrity
         create_or_update_channel(&mut conn, &channel)

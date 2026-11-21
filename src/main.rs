@@ -12,6 +12,7 @@ use utoipa_actix_web::AppExt;
 use utoipa_scalar::{Scalar, Servable};
 
 use crate::{
+    database::{DbConnection, DbPool},
     handlers::{
         ScopedHandler, health::HealthHandler, playlist_bookmarks::PlaylistBookmarksHandler,
         playlists::PlaylistsHandler, subscriptions::SubscriptionsHandler, user::UserHandler,
@@ -19,6 +20,7 @@ use crate::{
     },
     oidc::init_oidc,
     openapi::ApiDoc,
+    validation::init_validator,
 };
 
 mod auth;
@@ -50,13 +52,6 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations/sqlit
 #[cfg(feature = "postgres")]
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations/postgres/");
 
-#[cfg(feature = "sqlite")]
-type DbConnection =
-    diesel_async::sync_connection_wrapper::SyncConnectionWrapper<diesel::SqliteConnection>;
-#[cfg(feature = "postgres")]
-type DbConnection = diesel_async::AsyncPgConnection;
-
-type DbPool = Pool<DbConnection>;
 type WebData = web::Data<DbPool>;
 
 #[actix_web::main]
@@ -77,12 +72,14 @@ async fn main() -> io::Result<()> {
         Err(err) => panic!("{}", err),
     };
 
-    // run database migrations (must be done BEFORE the server is started!)
-    run_migrations(&pool).await;
+    init_validator(pool.clone());
 
     if let Some(oidc) = &CONFIG.oidc {
         init_oidc(oidc).await;
     }
+
+    // run database migrations (must be done BEFORE the server is started!)
+    run_migrations(&pool).await;
 
     log::info!("starting HTTP server at http://localhost:8080");
 

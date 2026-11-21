@@ -9,7 +9,7 @@ use actix_web::{
 };
 use utoipa_actix_web::scope::Scope;
 
-use crate::{models::Account, oidc::OidcError};
+use crate::{models::Account, oidc::OidcError, validation::ValidationError};
 
 pub mod health;
 pub mod playlist_bookmarks;
@@ -54,12 +54,8 @@ pub enum HandlerError {
     InternalDatabaseError,
     #[error("internal database error: {0}")]
     InternalDatabaseErrorWithContext(String),
-    #[error("provided metadata seems to be wrong")]
-    ValidationError,
-    #[error("provided metadata seems to be wrong: {0}")]
-    ValidationErrorWithContext(String),
-    #[error("failed to load data from YouTube")]
-    YouTubeConnectError,
+    #[error("{0}")]
+    ValidationError(#[from] ValidationError),
     #[error("{0}")]
     OidcError(OidcError),
     #[error("account doesn't support logging in via password")]
@@ -88,9 +84,13 @@ impl ResponseError for HandlerError {
             Self::NotInWatchHistory => StatusCode::NOT_FOUND,
             Self::InternalDatabaseError => StatusCode::INTERNAL_SERVER_ERROR,
             Self::InternalDatabaseErrorWithContext(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::ValidationError => StatusCode::BAD_REQUEST,
-            Self::ValidationErrorWithContext(_) => StatusCode::BAD_REQUEST,
-            Self::YouTubeConnectError => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::ValidationError(err) => {
+                if matches!(err, ValidationError::UnableToValidate) {
+                    StatusCode::INTERNAL_SERVER_ERROR
+                } else {
+                    StatusCode::BAD_REQUEST
+                }
+            }
             Self::OidcError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::PasswordLoginDisabledForAccount => StatusCode::BAD_REQUEST,
             Self::OidcPasswordChangeForbidden => StatusCode::FORBIDDEN,
@@ -129,7 +129,7 @@ impl FromRequest for Account {
 
 #[macro_export]
 macro_rules! get_db_conn {
-    ($pool:ident) => {
+    ($pool:expr) => {
         $pool
             .get()
             .await

@@ -17,7 +17,7 @@ use crate::{
     get_db_conn,
     handlers::{HandlerError, HandlerResult, ScopedHandler, user::auth_middleware},
     models::{Account, WatchHistoryItem},
-    validation::validate_video_information_if_changed_single,
+    validation::{VALIDATOR, Validator},
 };
 
 pub struct WatchHistoryHandler;
@@ -131,7 +131,13 @@ async fn add_to_watch_history(
     watch_history_item.metadata.account_id = account.id;
     watch_history_item.metadata.video_id = watch_history_item.video.id.clone();
 
-    validate_video_information_if_changed_single(&mut conn, &mut watch_history_item.video).await?;
+    VALIDATOR
+        .get()
+        .unwrap()
+        .is_video_information_valid(&watch_history_item.video)
+        .await
+        .assign_changes(&mut watch_history_item.video)
+        .into_result()?;
 
     // store video metadata in database
     create_or_update_channel(&mut conn, &watch_history_item.video.uploader)
